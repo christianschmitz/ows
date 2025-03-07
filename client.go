@@ -16,7 +16,7 @@ func main() {
                 log.Fatal("expected 1 arg")    
             }
 
-            g := ledger.NewGenesisChangeSet(
+            g := ledger.NewGenesisSet(
                 ledger.NewAddCompute(
                     args[0],
                 ),

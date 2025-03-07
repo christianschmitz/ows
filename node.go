@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-    _ = ledger.GetEnvGenesisChangeSet()
+    l := ledger.ReadLedger()
 
-    fmt.Println("Genesis change-set OK")
+    fmt.Printf("Ledger OK, has %d changes \n", len(l.Changes))
 }
