@@ -42,37 +42,10 @@ func (l *Ledger) syncHead() {
 	}
 }
 
-func getHomePath(isClient bool) string {
-    path, exists := os.LookupEnv("HOME")
+func getLedgerPath(g *GenesisSet) string {
+	h := StringifyChangeSetHash(g.Hash())	
 
-    if exists {
-		if (isClient) {
-			path = path + "/.ows/client"
-		} else {
-			path = path + "/.ows/node"
-		}
-    } else {
-		if (isClient) {
-			log.Fatal("no home path set for client")
-		} else {
-        	path = "/ows"
-		}
-    }
-
-    err := os.MkdirAll(path, os.ModePerm)
-	if err != nil {
-        log.Fatal(err)
-	}
-
-    return path
-}
-
-func getLedgerPath(g *GenesisSet, isClient bool) string {
-	h := StringifyChangeSetHash(g.Hash())
-
-	root := getHomePath(isClient)
-
-	projectPath := root + "/" + h
+	projectPath := HomeDir + "/" + h
 
 	if err := os.MkdirAll(projectPath, os.ModePerm); err != nil {
 		log.Fatal(err)
@@ -83,10 +56,10 @@ func getLedgerPath(g *GenesisSet, isClient bool) string {
 	return ledgerPath
 }
 
-func ReadLedger(isClient bool) *Ledger {
+func ReadLedger() *Ledger {
 	g := LookupGenesisSet()
 
-	ledgerPath := getLedgerPath(g, isClient)
+	ledgerPath := getLedgerPath(g)
 
 	if _, err := os.Stat(ledgerPath); err == nil {
 		dat, err := os.ReadFile(ledgerPath)
@@ -191,8 +164,8 @@ func (l *Ledger) GetChangeSetHashes() *ChangeSetHashes {
 	}
 }
 
-func (l *Ledger) Persist(isClient bool) {
-	ledgerPath := getLedgerPath(&(l.Genesis), isClient)
+func (l *Ledger) Persist() {
+	ledgerPath := getLedgerPath(&(l.Genesis))
 
 	bytes := l.Encode()
 

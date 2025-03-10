@@ -3,11 +3,30 @@ package main
 import (
     "fmt"
     "log"
+    "os"
     "github.com/spf13/cobra"
     "ows/ledger"
 )
 
 func main() {
+    initializeHomeDir()
+    
+    root := configureCLI()
+
+    root.Execute()
+}
+
+func initializeHomeDir() {
+    path, exists := os.LookupEnv("HOME")
+
+    if (!exists) {
+        log.Fatal("env variable HOME not set")
+    }
+
+    ledger.SetHomeDir(path + "/.ows/client")
+}
+
+func configureCLI() *cobra.Command {
     root := &cobra.Command{
 		Use:   "ows",
 		Short: "Open Web Services CLI",
@@ -20,6 +39,8 @@ func main() {
             if len(args) != 1 {
                 log.Fatal("expected 1 arg")    
             }
+
+            _ = getKeyPair()
 
             g := ledger.NewGenesisSet(
                 ledger.NewAddCompute(
@@ -62,6 +83,7 @@ func main() {
         Use: "tasks",
         Short: "Manage tasks",
     }
+
     tasks.AddCommand(&cobra.Command{
         Use: "add",
         Short: "Create a new task",
@@ -84,19 +106,20 @@ func main() {
 
             c.Ledger.AppendChangeSet(cs)
 
-            c.Ledger.Persist(true)
+            c.Ledger.Persist()
         },
     })
+
     root.AddCommand(tasks)
 
-    root.Execute()
+    return root
 }
 
 func getSyncedLedgerClient() *ledger.LedgerClient {
-    l := ledger.ReadLedger(true)
+    l := ledger.ReadLedger()
 
     c := ledger.NewLedgerClient(l)
-    c.Sync(true)
+    c.Sync()
 
     return c
 }
@@ -105,4 +128,14 @@ func readLedger() *ledger.Ledger {
     c := getSyncedLedgerClient()
 
     return c.Ledger
+}
+
+func getKeyPair() *ledger.KeyPair {
+    p, err := ledger.ReadKeyPair(ledger.HomeDir + "/key", true)
+
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    return p
 }

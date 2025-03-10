@@ -18,7 +18,7 @@ func NewLedgerClient(l *Ledger) *LedgerClient {
 // If the head isn't the same, fetch all tx Ids
 // Find the intersection (last common point)
 // Download everything after the intersection
-func (c *LedgerClient) Sync(isClient bool) {
+func (c *LedgerClient) Sync() {
 	node := c.pickNode()
 
 	head := node.GetHead()
@@ -54,7 +54,7 @@ func (c *LedgerClient) Sync(isClient bool) {
 		}
 	}
 
-	c.Ledger.Persist(isClient)
+	c.Ledger.Persist()
 }
 
 // returns the node address
