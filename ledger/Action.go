@@ -7,6 +7,7 @@ import (
 )
 
 type Action interface {
+	Apply(m ResourceManager, gen ResourceIdGenerator)
 	GetName() string
 
 	// valid categories are: compute, permissions
@@ -86,6 +87,15 @@ func (a ActionCbor) convertToAction() (Action, error) {
 		switch name {
 		case "AddUser":
 			var c AddUser
+			err := cbor.Unmarshal(attrBytes, &c)
+			return &c, err
+		default:
+			return nil, errors.New("invalid " + category + " action " + name)
+		}
+	case "tasks":
+		switch name {
+		case "AddTask":
+			var c AddTask
 			err := cbor.Unmarshal(attrBytes, &c)
 			return &c, err
 		default:

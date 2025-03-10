@@ -1,7 +1,6 @@
 package ledger
 
 import (
-	"encoding/base64"
 	"log"
 	"os"
 	"github.com/fxamacker/cbor/v2"
@@ -51,7 +50,7 @@ func LookupGenesisSet() *GenesisSet {
 		log.Fatal(GENESIS_ENV_VAR_NAME + " is not set")
 	}
 
-	decodedBytes, err := base64.URLEncoding.WithPadding(base64.NoPadding).DecodeString(str)
+	decodedBytes, err := ParseBytes(str)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -63,6 +62,18 @@ func LookupGenesisSet() *GenesisSet {
 	}
 
 	return g
+}
+
+func GenerateGenesisResourceId(i int) ResourceId {
+	return GenerateResourceId([]byte{}, i)
+}
+
+func (g *GenesisSet) Apply(m ResourceManager) {
+	for i, a := range g.Actions {
+		a.Apply(m, func () ResourceId {
+			return GenerateGenesisResourceId(i)
+		})
+	}
 }
 
 // is encoded as list of bytes
@@ -86,7 +97,7 @@ func (g *GenesisSet) Encode() []byte {
 
 func (g *GenesisSet) EncodeBase64() string {
 	bytes := g.Encode()
-	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(bytes)
+	return StringifyBytes(bytes)
 }
 
 func (g *GenesisSet) Hash() ChangeSetHash {

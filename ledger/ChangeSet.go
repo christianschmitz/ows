@@ -18,6 +18,30 @@ type ChangeSetCbor struct {
 	Actions    []ActionCbor  `cbor:"2,keyasint"`
 }
 
+func GenerateResourceId(parentId []byte, i int) ResourceId {
+	return sha3.Sum256(append(parentId, byte(i)))
+}
+
+func DecodeChangeSet(bytes []byte) (*ChangeSet, error) {
+	v := ChangeSetCbor{}
+
+	err := cbor.Unmarshal(bytes, &v)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return v.convertToChangeSet()
+}
+
+func (c *ChangeSet) Apply(m ResourceManager) {
+	for i, a := range c.Actions {
+		a.Apply(m, func () ResourceId {
+			return GenerateResourceId(c.Parent[:], i)
+		})
+	}
+}
+
 func (c *ChangeSet) Encode() []byte {
 	bytes, err := cbor.Marshal(c.convertToChangeSetCbor())
 
@@ -43,7 +67,7 @@ func (c *ChangeSet) convertToChangeSetCbor() ChangeSetCbor {
 	return ChangeSetCbor{c.Parent, c.Signatures, actions}
 }
 
-func (c ChangeSetCbor) convertToChangeSet() ChangeSet {
+func (c ChangeSetCbor) convertToChangeSet() (*ChangeSet, error) {
 	actions := make([]Action, len(c.Actions))
 
 	for i, a := range c.Actions {
@@ -51,13 +75,13 @@ func (c ChangeSetCbor) convertToChangeSet() ChangeSet {
 		actions[i], err = a.convertToAction()
 
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 	}
 
-	return ChangeSet{
+	return &ChangeSet{
 		c.Parent,
 		c.Signatures,
 		actions,
-	}
+	}, nil
 }
