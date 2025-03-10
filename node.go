@@ -2,8 +2,8 @@ package main
 
 import (
     "fmt"
-    "cws/ledger"
-    "cws/resources"
+    "ows/ledger"
+    "ows/resources"
 )
 
 func main() {

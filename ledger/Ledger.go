@@ -47,15 +47,15 @@ func getHomePath(isClient bool) string {
 
     if exists {
 		if (isClient) {
-			path = path + "/.cws/client"
+			path = path + "/.ows/client"
 		} else {
-			path = path + "/.cws/node"
+			path = path + "/.ows/node"
 		}
     } else {
 		if (isClient) {
 			log.Fatal("no home path set for client")
 		} else {
-        	path = "/cws"
+        	path = "/ows"
 		}
     }
 

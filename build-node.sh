@@ -1,2 +1,2 @@
 #!/bin/bash
-go build -o ./dist/cws-node ./node.go
+go build -o ./dist/ows-node ./node.go

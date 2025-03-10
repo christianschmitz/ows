@@ -4,13 +4,13 @@ import (
     "fmt"
     "log"
     "github.com/spf13/cobra"
-    "cws/ledger"
+    "ows/ledger"
 )
 
 func main() {
     root := &cobra.Command{
-		Use:   "cws",
-		Short: "Cardano Web Services Client CLI",
+		Use:   "ows",
+		Short: "Open Web Services CLI",
 	}
 
     root.AddCommand(&cobra.Command{

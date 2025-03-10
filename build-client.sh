@@ -1,2 +1,2 @@
 #!/bin/bash
-go build -o ./dist/cws-client ./client.go 
+go build -o ./dist/ows ./client.go 

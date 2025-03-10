@@ -7,7 +7,7 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-const GENESIS_ENV_VAR_NAME = "CWS_GENESIS"
+const GENESIS_ENV_VAR_NAME = "OWS_GENESIS"
 
 type GenesisSet struct {
 	Actions []Action

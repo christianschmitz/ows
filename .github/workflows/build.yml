@@ -1,4 +1,4 @@
-name: Build and publish CWS node and client
+name: Build and publish OWS node and client
 
 on:
     push:

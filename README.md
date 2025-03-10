@@ -1,12 +1,12 @@
-# cws
+# Open Web Services
 
-Proof-of-concept private cloud node
+AWS-like managed services controller and client, which can be used on with any cloud provider
 
 ## Documentation
 
-The documentation is hosted [here](https://cardanowebservices.github.io/cws/index.html)
+The documentation is hosted [here](https://christianschmitz.github.io/ows/index.html)
 
 ## Installation
 
-Download the [latest node](https://cardanowebservices.github.io/cws/cws-node)
-Download the [latest client](https://cardanowebservices.github.io/cws/cws-client)
+Download the [latest node](https://christianschmitz.github.io/ows/ows-node)
+Download the [latest client](https://christianschmitz.github.io/ows/ows)

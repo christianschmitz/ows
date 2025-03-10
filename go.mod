@@ -1,4 +1,4 @@
-module cws
+module ows
 
 go 1.24.1
 

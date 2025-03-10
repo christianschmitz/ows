@@ -1,7 +1,7 @@
 package resources
 
 import (
-	"cws/ledger"
+	"ows/ledger"
 )
 
 type ResourceManager struct {
