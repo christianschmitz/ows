@@ -111,23 +111,6 @@ func (l *Ledger) AppendChangeSet(cs *ChangeSet) {
 	l.syncHead()
 }
 
-func (l *Ledger) GetNodeAddresses() map[ResourceId]string {
-	m := map[ResourceId]string{}
-
-	for _, cs := range l.Changes {
-		for i, a := range cs.Actions {
-			if ac, ok := a.(*AddCompute); ok {
-				id := GenerateResourceId(cs.Parent[:], i)
-				m[id] = ac.Address
-			} else if rc, ok := a.(*RemoveCompute); ok {
-				delete(m, rc.Id)
-			}
-		}
-	}
-
-	return m
-}
-
 func (l *Ledger) GetChangeSet(h ChangeSetHash) (*ChangeSet, bool) {
 	// start from end
 	for i := len(l.Changes); i >= 0; i-- {

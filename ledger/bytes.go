@@ -7,7 +7,6 @@ import (
 	"github.com/btcsuite/btcutil/bech32"
 )
 
-// TODO: bech32 with custom prefix
 func StringifyHumanReadableBytes(prefix string, bs []byte) string {
 	conv, err := bech32.ConvertBits(bs, 8, 5, true)
 	if err != nil {

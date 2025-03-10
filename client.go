@@ -5,7 +5,9 @@ import (
     "log"
     "os"
     "github.com/spf13/cobra"
+    "ows/actions"
     "ows/ledger"
+    "ows/sync"
 )
 
 func main() {
@@ -43,7 +45,7 @@ func configureCLI() *cobra.Command {
             keyPair := getKeyPair()
 
             g := ledger.NewGenesisChangeSet(
-                ledger.NewAddCompute(
+                actions.NewAddCompute(
                     args[0],
                 ),
             )
@@ -65,7 +67,7 @@ func configureCLI() *cobra.Command {
         Short: "List node addresses",
         Run: func(cmd *cobra.Command, _ []string) {
             l := readLedger()
-            m := l.GetNodeAddresses()
+            m := actions.GetNodeAddresses(l)
 
             for id, addr := range m {
                 fmt.Printf("%s %s\n", ledger.StringifyResourceId(id), addr)
@@ -110,7 +112,7 @@ func configureCLI() *cobra.Command {
                 Parent: c.Ledger.Head,
                 Signatures: []ledger.Signature{}, // TODO: sign
                 Actions: []ledger.Action{
-                    &ledger.AddTask{"nodejs", args[0]},
+                    &actions.AddTask{"nodejs", args[0]},
                 },
             }
 
@@ -127,10 +129,10 @@ func configureCLI() *cobra.Command {
     return root
 }
 
-func getSyncedLedgerClient() *ledger.LedgerClient {
+func getSyncedLedgerClient() *sync.LedgerClient {
     l := ledger.ReadLedger()
 
-    c := ledger.NewLedgerClient(l)
+    c := sync.NewLedgerClient(l)
     c.Sync()
 
     return c

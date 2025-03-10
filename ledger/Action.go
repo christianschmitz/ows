@@ -6,6 +6,10 @@ import (
 	"github.com/fxamacker/cbor/v2"
 )
 
+type ActionGenerator = func(attrBytes []byte) (Action, error)
+
+var ACTIONS = map[string]map[string]ActionGenerator{}
+
 type Action interface { 
 	// valid categories are: compute, permissions
 	GetCategory() string
@@ -64,44 +68,30 @@ func (h *ActionHelper) convertToActionCbor() ActionCbor {
 	}
 }
 
+func RegisterAction(category string, name string, generator ActionGenerator) bool {
+	if prev, ok := ACTIONS[category]; ok {
+		prev[name] = generator
+	} else {
+		ACTIONS[category] = map[string]ActionGenerator{
+			name: generator,
+		}
+	}
+
+	return true
+}
+
 func (a ActionCbor) convertToAction() (Action, error) {
 	category := a.Category
 	name := a.Name
 	attrBytes := a.Attributes
 
-	switch category {
-	case "compute":
-		switch name {
-		case "AddCompute":
-			var c AddCompute
-			err := cbor.Unmarshal(attrBytes, &c)
-			return &c, err
-		case "RemoveCompute":
-			var c RemoveCompute
-			err := cbor.Unmarshal(attrBytes, &c)
-			return &c, err
-		default:
+	if categoryActions, ok := ACTIONS[category]; ok {
+		if action, ok := categoryActions[name]; ok {
+			return action(attrBytes)
+		} else {
 			return nil, errors.New("invalid " + category + " action " + name)
 		}
-	case "permissions":
-		switch name {
-		case "AddUser":
-			var c AddUser
-			err := cbor.Unmarshal(attrBytes, &c)
-			return &c, err
-		default:
-			return nil, errors.New("invalid " + category + " action " + name)
-		}
-	case "tasks":
-		switch name {
-		case "AddTask":
-			var c AddTask
-			err := cbor.Unmarshal(attrBytes, &c)
-			return &c, err
-		default:
-			return nil, errors.New("invalid " + category + " action " + name)
-		}
-	default:
+	} else {
 		return nil, errors.New("invalid category " + category)
 	}
 }

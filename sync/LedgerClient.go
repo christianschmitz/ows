@@ -1,14 +1,16 @@
-package ledger
+package sync
 
 import (
 	"log"
+	"ows/actions"
+	"ows/ledger"
 )
 
 type LedgerClient struct {
-	Ledger *Ledger
+	Ledger *ledger.Ledger
 }
 
-func NewLedgerClient(l *Ledger) *LedgerClient {
+func NewLedgerClient(l *ledger.Ledger) *LedgerClient {
 	return &LedgerClient{l}
 }
 
@@ -22,12 +24,11 @@ func (c *LedgerClient) Sync() error {
 	node := c.pickNode()
 
 	head, err := node.GetHead()
-
 	if err != nil {
 		return err
 	}
 
-	if (IsSameChangeSetHash(c.Ledger.Head, head)) {
+	if (ledger.IsSameChangeSetHash(c.Ledger.Head, head)) {
 		return nil
 	}
 
@@ -67,7 +68,7 @@ func (c *LedgerClient) Sync() error {
 
 // returns the node address
 func (c *LedgerClient) pickNode() *NodeSyncClient {
-	m := c.Ledger.GetNodeAddresses()
+	m := actions.GetNodeAddresses(c.Ledger)
 
 	for _, a := range m {
 		return NewNodeSyncClient(a)
@@ -78,13 +79,13 @@ func (c *LedgerClient) pickNode() *NodeSyncClient {
 	return nil
 }
 
-func (c *LedgerClient) GetChangeSetHashes() (*ChangeSetHashes, error) {
+func (c *LedgerClient) GetChangeSetHashes() (*ledger.ChangeSetHashes, error) {
 	node := c.pickNode()
 
 	return node.GetChangeSetHashes()
 }
 
-func (c *LedgerClient) PublishChangeSet(cs *ChangeSet) {
+func (c *LedgerClient) PublishChangeSet(cs *ledger.ChangeSet) {
 	node := c.pickNode()
 
 	node.PublishChangeSet(cs)

@@ -1,4 +1,4 @@
-package ledger
+package sync
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"ows/ledger"
 )
 
 type NodeSyncClient struct {
@@ -18,10 +19,10 @@ func NewNodeSyncClient(address string) *NodeSyncClient {
 }
 
 func (c *NodeSyncClient) url(relPath string) string {
-	return "http://" + c.address + ":" + strconv.Itoa(SYNC_PORT) + "/" + relPath
+	return "http://" + c.address + ":" + strconv.Itoa(ledger.SYNC_PORT) + "/" + relPath
 }
 
-func (c *NodeSyncClient) GetHead() (ChangeSetHash, error) {
+func (c *NodeSyncClient) GetHead() (ledger.ChangeSetHash, error) {
 	resp, err := http.Get(c.url("head"))
 
 	if err != nil {
@@ -35,12 +36,11 @@ func (c *NodeSyncClient) GetHead() (ChangeSetHash, error) {
 		return []byte{}, err
 	}
 
-	return ParseChangeSetHash(string(body))
+	return ledger.ParseChangeSetHash(string(body))
 }
 
-func (c *NodeSyncClient) GetChangeSet(h ChangeSetHash) (*ChangeSet, error) {
-	resp, err := http.Get(c.url(StringifyChangeSetHash(h)))
-
+func (c *NodeSyncClient) GetChangeSet(h ledger.ChangeSetHash) (*ledger.ChangeSet, error) {
+	resp, err := http.Get(c.url(ledger.StringifyChangeSetHash(h)))
 	if err != nil {
 		return nil, err
 	}
@@ -52,12 +52,11 @@ func (c *NodeSyncClient) GetChangeSet(h ChangeSetHash) (*ChangeSet, error) {
 		return nil, err
 	}
 
-	return DecodeChangeSet(body)
+	return ledger.DecodeChangeSet(body)
 }
 
-func (c *NodeSyncClient) GetChangeSetHashes() (*ChangeSetHashes, error) {
+func (c *NodeSyncClient) GetChangeSetHashes() (*ledger.ChangeSetHashes, error) {
 	resp, err := http.Get(c.url(""))
-
 	if err != nil {
 		return nil, err
 	}
@@ -77,10 +76,10 @@ func (c *NodeSyncClient) GetChangeSetHashes() (*ChangeSetHashes, error) {
 		return nil, err
 	}
 
-	hashes := make([]ChangeSetHash, len(rawHashes))
+	hashes := make([]ledger.ChangeSetHash, len(rawHashes))
 
 	for i, rh := range rawHashes {
-		h, err := ParseChangeSetHash(rh)
+		h, err := ledger.ParseChangeSetHash(rh)
 
 		if err != nil {
 			return nil, err
@@ -89,10 +88,10 @@ func (c *NodeSyncClient) GetChangeSetHashes() (*ChangeSetHashes, error) {
 		hashes[i] = h
 	}
 
-	return &ChangeSetHashes{hashes}, nil
+	return &ledger.ChangeSetHashes{hashes}, nil
 }
 
-func (c *NodeSyncClient) PublishChangeSet(cs *ChangeSet) error {
+func (c *NodeSyncClient) PublishChangeSet(cs *ledger.ChangeSet) error {
 	bs, err := cs.Encode(false)
 	if err != nil {
 		return err

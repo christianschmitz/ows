@@ -3,9 +3,12 @@ package main
 import (
     "fmt"
     "os"
+    "ows/actions"
     "ows/ledger"
     "ows/resources"
 )
+
+var _ActionsInitialized = actions.InitializeActions()
 
 func main() {
     initializeHomeDir()
