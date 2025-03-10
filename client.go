@@ -40,15 +40,23 @@ func configureCLI() *cobra.Command {
                 log.Fatal("expected 1 arg")    
             }
 
-            _ = getKeyPair()
+            keyPair := getKeyPair()
 
-            g := ledger.NewGenesisSet(
+            g := ledger.NewGenesisChangeSet(
                 ledger.NewAddCompute(
                     args[0],
                 ),
             )
 
-            fmt.Println(g.EncodeBase64())
+            // TODO: multi-sig
+            signature, err := keyPair.SignChangeSet(g)
+            if err != nil {
+                log.Fatal(err)
+            }
+
+            g.Signatures = append(g.Signatures, signature)
+
+            fmt.Println(g.EncodeToString())
 		},
     })
 
@@ -71,7 +79,11 @@ func configureCLI() *cobra.Command {
         Run: func(cmd *cobra.Command, _ []string) {
             c := getSyncedLedgerClient()
 
-            hashes := c.GetChangeSetHashes()
+            hashes, err := c.GetChangeSetHashes()
+
+            if err != nil {
+                log.Fatal(err)
+            }
 
             for _, h := range hashes.Hashes {
                 fmt.Printf("%s\n", ledger.StringifyChangeSetHash(h))

@@ -1,7 +1,6 @@
 package ledger
 
 import (
-	"fmt"
 	"log"
 )
 
@@ -16,7 +15,6 @@ func NewAddCompute(addr string) *AddCompute {
 func (c *AddCompute) Apply(m ResourceManager, gen ResourceIdGenerator) {
 	id := gen()
 
-	fmt.Println("addr: " + c.Address)
 	m.AddCompute(id, c.Address)
 }
 

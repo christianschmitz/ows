@@ -18,36 +18,42 @@ func NewLedgerClient(l *Ledger) *LedgerClient {
 // If the head isn't the same, fetch all tx Ids
 // Find the intersection (last common point)
 // Download everything after the intersection
-func (c *LedgerClient) Sync() {
+func (c *LedgerClient) Sync() error {
 	node := c.pickNode()
 
-	head := node.GetHead()
+	head, err := node.GetHead()
 
-	if (IsSameChangeSetHash(c.Ledger.Head, head)) {
-		return
+	if err != nil {
+		return err
 	}
 
-	remoteChangeSetHashes := node.GetChangeSetHashes()
+	if (IsSameChangeSetHash(c.Ledger.Head, head)) {
+		return nil
+	}
+
+	remoteChangeSetHashes, err := node.GetChangeSetHashes()
+	if err != nil {
+		return err
+	}
+
 	thisChangeSetHashes := c.Ledger.GetChangeSetHashes()
 
 	p, err := thisChangeSetHashes.FindIntersection(remoteChangeSetHashes)
-
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	// remove p+1: from this ledger
+	// remove [p+1:] from local ledger
 	c.Ledger.KeepChangeSets(p)
 
-	// download q+1: from remote
+	// download [p+1:] from remote ledger
 	if p+1 < len(remoteChangeSetHashes.Hashes) {
 		for i := p+1; i < len(remoteChangeSetHashes.Hashes); i++ {
 			h := remoteChangeSetHashes.Hashes[i]
 
 			cs, err := node.GetChangeSet(h)
-
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 
 			c.Ledger.AppendChangeSet(cs)
@@ -55,6 +61,8 @@ func (c *LedgerClient) Sync() {
 	}
 
 	c.Ledger.Persist()
+
+	return nil
 }
 
 // returns the node address
@@ -70,7 +78,7 @@ func (c *LedgerClient) pickNode() *NodeSyncClient {
 	return nil
 }
 
-func (c *LedgerClient) GetChangeSetHashes() *ChangeSetHashes {
+func (c *LedgerClient) GetChangeSetHashes() (*ChangeSetHashes, error) {
 	node := c.pickNode()
 
 	return node.GetChangeSetHashes()

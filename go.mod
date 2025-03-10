@@ -3,6 +3,7 @@ module ows
 go 1.24.1
 
 require (
+	github.com/btcsuite/btcutil v1.0.2
 	github.com/fxamacker/cbor/v2 v2.7.0
 	github.com/spf13/cobra v1.9.1
 	golang.org/x/crypto v0.36.0

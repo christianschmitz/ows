@@ -8,14 +8,8 @@ import (
 
 type ChangeSet struct {
 	Parent     ChangeSetHash
-	Signatures []Signature
 	Actions    []Action
-}
-
-type ChangeSetCbor struct {
-	Parent     ChangeSetHash `cbor:"0,keyasint"`
-	Signatures []Signature   `cbor:"1,keyasint"`
-	Actions    []ActionCbor  `cbor:"2,keyasint"`
+	Signatures []Signature
 }
 
 func GenerateResourceId(parentId []byte, i int) ResourceId {
@@ -26,37 +20,52 @@ func DecodeChangeSet(bytes []byte) (*ChangeSet, error) {
 	v := ChangeSetCbor{}
 
 	err := cbor.Unmarshal(bytes, &v)
-
 	if err != nil {
 		return nil, err
 	}
 
+	
 	return v.convertToChangeSet()
 }
 
 func (c *ChangeSet) Apply(m ResourceManager) {
 	for i, a := range c.Actions {
 		a.Apply(m, func () ResourceId {
-			return GenerateResourceId(c.Parent[:], i)
+			return GenerateResourceId(c.Parent, i)
 		})
 	}
 }
 
-func (c *ChangeSet) Encode() []byte {
-	bytes, err := cbor.Marshal(c.convertToChangeSetCbor())
+func (c *ChangeSet) Encode(forSigning bool) ([]byte, error) {
+	bytes, err := cbor.Marshal(c.convertToChangeSetCbor(forSigning))
+	if err != nil {
+		return nil, err
+	}
 
+	return bytes, nil
+}
+
+func (g *ChangeSet) EncodeToString() string {
+	bytes, err := g.Encode(false)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return bytes
+	return StringifyCompactBytes(bytes)
 }
 
 func (c *ChangeSet) Hash() ChangeSetHash {
-	return sha3.Sum256(c.Encode())
+	bytes, err := c.Encode(false)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	hash := sha3.Sum256(bytes)
+
+	return hash[:]
 }
 
-func (c *ChangeSet) convertToChangeSetCbor() ChangeSetCbor {
+func (c *ChangeSet) convertToChangeSetCbor(forSigning bool) ChangeSetCbor {
 	actions := make([]ActionCbor, len(c.Actions))
 
 	for i, a := range c.Actions {
@@ -64,24 +73,11 @@ func (c *ChangeSet) convertToChangeSetCbor() ChangeSetCbor {
 		actions[i] = h.convertToActionCbor()
 	}
 
-	return ChangeSetCbor{c.Parent, c.Signatures, actions}
-}
+	signatures := c.Signatures[:]
 
-func (c ChangeSetCbor) convertToChangeSet() (*ChangeSet, error) {
-	actions := make([]Action, len(c.Actions))
-
-	for i, a := range c.Actions {
-		var err error
-		actions[i], err = a.convertToAction()
-
-		if err != nil {
-			return nil, err
-		}
+	if forSigning {
+		signatures = []Signature{}
 	}
 
-	return &ChangeSet{
-		c.Parent,
-		c.Signatures,
-		actions,
-	}, nil
+	return ChangeSetCbor{c.Parent[:], actions, signatures}
 }

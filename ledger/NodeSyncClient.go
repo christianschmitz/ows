@@ -3,8 +3,8 @@ package ledger
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -21,18 +21,18 @@ func (c *NodeSyncClient) url(relPath string) string {
 	return "http://" + c.address + ":" + strconv.Itoa(SYNC_PORT) + "/" + relPath
 }
 
-func (c *NodeSyncClient) GetHead() ChangeSetHash {
+func (c *NodeSyncClient) GetHead() (ChangeSetHash, error) {
 	resp, err := http.Get(c.url("head"))
 
 	if err != nil {
-		log.Fatal(err)
+		return []byte{}, err
 	}
 
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal(err)	
+		return []byte{}, err
 	}
 
 	return ParseChangeSetHash(string(body))
@@ -55,18 +55,18 @@ func (c *NodeSyncClient) GetChangeSet(h ChangeSetHash) (*ChangeSet, error) {
 	return DecodeChangeSet(body)
 }
 
-func (c *NodeSyncClient) GetChangeSetHashes() *ChangeSetHashes {
+func (c *NodeSyncClient) GetChangeSetHashes() (*ChangeSetHashes, error) {
 	resp, err := http.Get(c.url(""))
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal(err)	
+		return nil, err	
 	}
 
 	rawHashes := []string{}
@@ -74,28 +74,38 @@ func (c *NodeSyncClient) GetChangeSetHashes() *ChangeSetHashes {
 	err = json.Unmarshal(body, &rawHashes)
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	hashes := make([]ChangeSetHash, len(rawHashes))
 
-	for i, h := range rawHashes {
-		hashes[i] = ParseChangeSetHash(h)
+	for i, rh := range rawHashes {
+		h, err := ParseChangeSetHash(rh)
+
+		if err != nil {
+			return nil, err
+		}
+
+		hashes[i] = h
 	}
 
-	return &ChangeSetHashes{hashes}
+	return &ChangeSetHashes{hashes}, nil
 }
 
-func (c *NodeSyncClient) PublishChangeSet(cs *ChangeSet) {
-	cs.Encode()
-
-	resp, err := http.Post(c.url(""), "application/cbor", bytes.NewBuffer(cs.Encode()))
-
+func (c *NodeSyncClient) PublishChangeSet(cs *ChangeSet) error {
+	bs, err := cs.Encode(false)
 	if err != nil {
-		log.Fatal(err)
+		return err
+	}
+
+	resp, err := http.Post(c.url(""), "application/cbor", bytes.NewBuffer(bs))
+	if err != nil {
+		return err
 	}
 
 	if resp.StatusCode != 200 {
-		log.Fatal("request failed: " + resp.Status)
+		return errors.New("request failed: " + resp.Status)		
 	}
+
+	return nil
 }

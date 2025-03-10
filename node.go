@@ -16,8 +16,6 @@ func main() {
 
     l.ApplyAll(rm)
 
-    fmt.Printf("Ledger OK, has %d changes \n", len(l.Changes))
-
     go ledger.ListenAndServeLedger(l, rm)
 
     select {}
@@ -34,4 +32,6 @@ func initializeHomeDir() {
     }
 
     ledger.SetHomeDir(path)
+
+    fmt.Println("Home dir: " + path)
 }

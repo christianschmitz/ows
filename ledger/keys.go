@@ -4,7 +4,6 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"errors"
-	"log"
 	"os"
 	"github.com/fxamacker/cbor/v2"
 )
@@ -94,11 +93,11 @@ func (p *KeyPair) Encode() ([]byte, error) {
 	return cbor.Marshal(*p)
 }
 
-func (p *KeyPair) Sign(message []byte) Signature {
+func (p *KeyPair) Sign(message []byte) (Signature, error) {
 	rawSigBytes := ed25519.Sign(p.Private[:], message)
 
 	if len(rawSigBytes) != 64 {
-		log.Fatal("ed25519 signature not exactly 64 bytes long")
+		return Signature{}, errors.New("ed25519 signature not exactly 64 bytes long")		
 	}
 
 	sigBytes := [64]byte{}
@@ -107,7 +106,16 @@ func (p *KeyPair) Sign(message []byte) Signature {
 		sigBytes[i] = b
 	}
 
-	return Signature{p.Public, sigBytes}
+	return Signature{p.Public, sigBytes}, nil
+}
+
+func (p *KeyPair) SignChangeSet(cs *ChangeSet) (Signature, error) {
+	message, err := cs.Encode(true)
+	if err != nil {
+		return Signature{}, err
+	}
+
+	return p.Sign(message)
 }
 
 func (p *KeyPair) Write(path string) error {

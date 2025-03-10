@@ -6,12 +6,12 @@ import (
 	"github.com/fxamacker/cbor/v2"
 )
 
-type Action interface {
-	Apply(m ResourceManager, gen ResourceIdGenerator)
-	GetName() string
-
+type Action interface { 
 	// valid categories are: compute, permissions
 	GetCategory() string
+	GetName() string
+
+	Apply(m ResourceManager, gen ResourceIdGenerator)
 }
 
 type ActionHelper struct {
@@ -19,8 +19,8 @@ type ActionHelper struct {
 }
 
 type ActionCbor struct {
-	Name       string `cbor:"0,keyasint"`
-	Category   string `cbor:"1,keyasint"`
+	Category   string `cbor:"0,keyasint"`
+	Name       string `cbor:"1,keyasint"`
 	Attributes []byte `cbor:"2,keyasint"`
 }
 
@@ -58,15 +58,15 @@ func (h *ActionHelper) convertToActionCbor() ActionCbor {
 	}
 
 	return ActionCbor{
-		h.action.GetName(),
-		h.action.GetCategory(),
-		attr,
+		Category: h.action.GetCategory(),
+		Name: h.action.GetName(),
+		Attributes: attr,
 	}
 }
 
 func (a ActionCbor) convertToAction() (Action, error) {
-	name := a.Name
 	category := a.Category
+	name := a.Name
 	attrBytes := a.Attributes
 
 	switch category {

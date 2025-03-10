@@ -42,7 +42,11 @@ func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "%s", h.getLedgerHeadString())
 			return
 		default:
-			hash := ParseChangeSetHash(r.URL.Path)
+			hash, err := ParseChangeSetHash(r.URL.Path)
+			if err != nil {
+				http.Error(w, "Invalid change set format", 400)
+				return
+			}
 
 			cs, ok := h.ledger.GetChangeSet(hash)
 
@@ -51,8 +55,15 @@ func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
+			bs, err := cs.Encode(false)
+
+			if err != nil {
+				http.Error(w, "Internal encoding error", 500)
+				return
+			}
+
 			w.Header()["Content-Type"] = []string{"application/cbor"}
-			w.Write(cs.Encode())
+			w.Write(bs)
 		}
 	case "POST":
 		switch r.URL.Path {
@@ -67,7 +78,6 @@ func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 			cs, err := DecodeChangeSet(body)
 			if err != nil {
-				fmt.Println(err)
 				http.Error(w, "Invalid change set", 400)
 				return
 			}

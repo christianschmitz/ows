@@ -19,7 +19,6 @@ func (c *ChangeSetHashes) Stringify() string {
 	}
 
 	j, err := json.Marshal(rawHashes)
-
 	if err != nil {
 		log.Fatal(err)
 	}
