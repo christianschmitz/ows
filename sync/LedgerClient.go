@@ -57,7 +57,9 @@ func (c *LedgerClient) Sync() error {
 				return err
 			}
 
-			c.Ledger.AppendChangeSet(cs)
+			if err := c.Ledger.AppendChangeSet(cs, false); err != nil {
+				return err
+			}
 		}
 	}
 

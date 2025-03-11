@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"github.com/fxamacker/cbor/v2"
@@ -12,7 +13,7 @@ type Ledger struct {
 	Head ChangeSetHash
 }
 
-// TODO: validate
+// TODO: should validation be moved from ReadLedger() to DecodeLedger()?
 func DecodeLedger(bytes []byte) (*Ledger, error) {
 	changes, err := decodeLedgerChanges(bytes)
 	if err != nil {
@@ -52,7 +53,7 @@ func getLedgerPath(genesis *ChangeSet) string {
 	return makeLedgerPath(projectPath)
 }
 
-func ReadLedger() (*Ledger, error) {
+func ReadLedger(validateAssets bool) (*Ledger, error) {
 	g, err := LookupGenesisChangeSet()
 	if err != nil {
 		return nil, err
@@ -65,13 +66,14 @@ func ReadLedger() (*Ledger, error) {
 	l, ok := readLedger(ledgerPath)
 	if !ok {
 		l = &Ledger{[]ChangeSet{*g}, gHash}
-		if err := l.ValidateAll(); err != nil {
+		if err := l.ValidateAll(validateAssets); err != nil {
 			return nil, err
 		}
 
 		l.Write()
 	} else {
-		if err := l.ValidateAll(); err != nil {
+		if err := l.ValidateAll(validateAssets); err != nil {
+			log.Fatal(err)
 			return nil, err
 		}
 	}
@@ -89,6 +91,8 @@ func readLedger(ledgerPath string) (*Ledger, bool) {
 			l, err := DecodeLedger(dat)	
 			if err == nil {
 				return l, true
+			} else {
+				fmt.Println("Failed to decode ledger")
 			}
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
@@ -110,12 +114,12 @@ func (l *Ledger) KeepChangeSets(until int) {
 	l.syncHead()
 }
 
-func (l *Ledger) AppendChangeSet(cs *ChangeSet) error {
+func (l *Ledger) AppendChangeSet(cs *ChangeSet, validateAssets bool) error {
 	backup := l.Changes
 
 	l.Changes = append(backup, *cs)
 
-	if err := l.ValidateAll(); err != nil {
+	if err := l.ValidateAll(validateAssets); err != nil {
 		l.Changes = backup
 		return err
 	}

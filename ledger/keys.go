@@ -3,6 +3,7 @@ package ledger
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"os"
 	"github.com/fxamacker/cbor/v2"
@@ -15,6 +16,10 @@ type PubKey = [32]byte
 type KeyPair struct {
 	Private PrivateKey `cbor:"0,keyasint"`
 	Public PubKey `cbor:"1,keyasint"`
+}
+
+func StringifyPubKey(key PubKey) string {
+	return hex.EncodeToString(key[:])
 }
 
 func DecodeKeyPair(bytes []byte) (*KeyPair, error) {

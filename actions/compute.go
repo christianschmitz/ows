@@ -30,10 +30,6 @@ func (c *AddCompute) GetCategory() string {
 	return "compute"
 }
 
-func (c *AddCompute) GetResources() []ledger.ResourceId {
-	return []ledger.ResourceId{ledger.GenerateGlobalResourceId()}
-}
-
 var _AddComputeRegistered = ledger.RegisterAction("compute", "AddCompute", func (attr []byte) (ledger.Action, error) {
 	var c AddCompute
 	err := cbor.Unmarshal(attr, &c)
@@ -72,16 +68,16 @@ var _RemoveComputeRegistered = ledger.RegisterAction("compute", "RemoveCompute",
 	return &c, err
 })
 
-func GetNodeAddresses(l *ledger.Ledger) map[ledger.ResourceId]string {
-	m := map[ledger.ResourceId]string{}
+func GetNodeAddresses(l *ledger.Ledger) map[string]string {
+	m := map[string]string{}
 
 	for _, cs := range l.Changes {
 		for i, a := range cs.Actions {
 			if ac, ok := a.(*AddCompute); ok {
 				id := ledger.GenerateResourceId(cs.Parent[:], i)
-				m[id] = ac.Address
+				m[ledger.StringifyResourceId(id)] = ac.Address
 			} else if rc, ok := a.(*RemoveCompute); ok {
-				delete(m, rc.Id)
+				delete(m, ledger.StringifyResourceId(rc.Id))
 			}
 		}
 	}

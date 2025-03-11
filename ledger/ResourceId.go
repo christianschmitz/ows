@@ -56,7 +56,7 @@ func ParseResourceId(str string) (ResourceId, error) {
 
 	rId := [32]byte{}
 
-	for i, b := range rId {
+	for i, b := range bs {
 		rId[i] = b
 	}
 

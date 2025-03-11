@@ -2,6 +2,8 @@ package ledger
 
 import (
 	"errors"
+	"log"
+	"os"
 	"strconv"
 	"golang.org/x/crypto/sha3"
 )
@@ -35,4 +37,22 @@ func ParseAssetId(h string) (AssetId, error) {
 	}
 
 	return id, nil
+}
+
+func AssetExists(id AssetId) bool {
+	path := HomeDir + "/assets/" + StringifyAssetId(id)
+
+	_, err := os.Stat(path)
+
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false
+		} else {
+			log.Println(err)
+			return false
+		}
+	} else {
+		// TODO: should we check if file is corrupt or not?
+		return true
+	}
 }

@@ -4,11 +4,15 @@ import (
     "fmt"
     "log"
     "os"
+    "strconv"
+    "strings"
     "github.com/spf13/cobra"
     "ows/actions"
     "ows/ledger"
     "ows/sync"
 )
+
+var _ActionsInitialized = actions.InitializeActions()
 
 func main() {
     initializeHomeDir()
@@ -70,7 +74,7 @@ func configureCLI() *cobra.Command {
             m := actions.GetNodeAddresses(l)
 
             for id, addr := range m {
-                fmt.Printf("%s %s\n", ledger.StringifyResourceId(id), addr)
+                fmt.Printf("%s %s\n", id, addr)
             }
         },
     })
@@ -123,28 +127,33 @@ func configureCLI() *cobra.Command {
         },
     })
 
-    tasks := &cobra.Command{
-        Use: "tasks",
-        Short: "Manage tasks",
+    gateways := &cobra.Command{
+        Use: "gateways",
+        Short: "Manage gateways",
     }
 
-    tasks.AddCommand(&cobra.Command{
+    gateways.AddCommand(&cobra.Command{
         Use: "add",
-        Short: "Create a new task",
-        Run: func(cmd *cobra.Command, args []string) {
+        Short: "Create a new gateway",
+        Run: func (cmd *cobra.Command, args []string) {
             if len(args) != 1 {
                 log.Fatal("expected 1 arg")
             }
-            
-            key := getKeyPair()
+
             c := getSyncedLedgerClient()
+            key := getKeyPair()
+
+            port, err := strconv.Atoi(args[0])
+            if err != nil {
+                log.Fatal(err)
+            }
 
             cs := &ledger.ChangeSet{
                 Parent: c.Ledger.Head,
                 Actions: []ledger.Action{
-                    actions.NewAddTask("nodejs", args[0]),
+                    actions.NewAddGateway(port),
                 },
-                Signatures: []ledger.Signature{}, // TODO: sign
+                Signatures: []ledger.Signature{},
             }
 
             signature, err := key.SignChangeSet(cs)
@@ -158,7 +167,123 @@ func configureCLI() *cobra.Command {
                 log.Fatal(err)
             }
 
-            c.Ledger.AppendChangeSet(cs)
+            if err := c.Ledger.AppendChangeSet(cs, false); err != nil {
+                log.Fatal(err)
+            }
+
+            c.Ledger.Write()
+        },
+    })
+
+    gateways.AddCommand(&cobra.Command{
+        Use: "add-endpoint",
+        Short: "Add an endpoint task to a gateway",
+        Run: func (cmd *cobra.Command, args []string) {
+            if len(args) != 4 {
+                log.Fatal("expected 4 args")
+            }
+
+            gatewayId, err := ledger.ParseResourceId(args[0])
+            if err != nil {
+                log.Fatal(err)
+            }
+
+            method := args[1]
+            path := args[2]
+            task, err := ledger.ParseResourceId(args[3])
+            if err != nil {
+                log.Fatal(err)
+            }
+
+            c := getSyncedLedgerClient()
+            key := getKeyPair()
+
+            cs := &ledger.ChangeSet{
+                Parent: c.Ledger.Head,
+                Actions: []ledger.Action{
+                    actions.NewAddGatewayEndpoint(gatewayId, method, path, task),
+                },
+                Signatures: []ledger.Signature{},
+            }
+
+            signature, err := key.SignChangeSet(cs)
+            if err != nil {
+                log.Fatal(err)
+            }
+
+            cs.Signatures = append(cs.Signatures, signature)
+
+            if err := c.PublishChangeSet(cs); err != nil {
+                log.Fatal(err)
+            }
+
+            if err := c.Ledger.AppendChangeSet(cs, false); err != nil {
+                log.Fatal(err)
+            }
+
+            c.Ledger.Write()
+        },
+    })
+
+    root.AddCommand(gateways)
+
+    tasks := &cobra.Command{
+        Use: "tasks",
+        Short: "Manage tasks",
+    }
+
+    tasks.AddCommand(&cobra.Command{
+        Use: "add",
+        Short: "Create a new task",
+        Run: func(cmd *cobra.Command, args []string) {
+            if len(args) != 1 {
+                log.Fatal("expected 1 arg")
+            }
+
+            c := getSyncedLedgerClient()
+            
+            var err error
+            var id ledger.AssetId = [32]byte{}
+            if bs, err := os.ReadFile(args[0]); err == nil {
+                // upload the file first
+                
+                id, err = c.UploadFile(bs)
+                if err != nil {
+                    log.Fatal(err)
+                }
+            } else if strings.HasPrefix(args[0], "asset") {
+                id, err = ledger.ParseAssetId(args[0])
+                if err != nil {
+                    log.Fatal(err)
+                }
+            } else {
+                log.Fatal("invalid asset " + args[0])
+            }
+
+            key := getKeyPair()
+
+            cs := &ledger.ChangeSet{
+                Parent: c.Ledger.Head,
+                Actions: []ledger.Action{
+                    actions.NewAddTask("nodejs", id),
+                },
+                Signatures: []ledger.Signature{},
+            }
+
+            signature, err := key.SignChangeSet(cs)
+            if err != nil {
+                log.Fatal(err)
+            }
+
+            cs.Signatures = append(cs.Signatures, signature)
+
+            if err := c.PublishChangeSet(cs); err != nil {
+                log.Fatal(err)
+            }
+
+            if err := c.Ledger.AppendChangeSet(cs, false); err != nil {
+                log.Fatal(err)
+            }
 
             c.Ledger.Write()
         },
@@ -170,13 +295,16 @@ func configureCLI() *cobra.Command {
 }
 
 func getSyncedLedgerClient() *sync.LedgerClient {
-    l, err := ledger.ReadLedger()
+    l, err := ledger.ReadLedger(false)
     if err != nil {
         log.Fatal(err)
     }
 
     c := sync.NewLedgerClient(l)
-    c.Sync()
+
+    if err := c.Sync(); err != nil {
+        log.Fatal(err)
+    }
 
     return c
 }

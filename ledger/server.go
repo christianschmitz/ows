@@ -84,10 +84,16 @@ func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			if err := h.ledger.AppendChangeSet(cs); err != nil {
+			if err := h.ledger.AppendChangeSet(cs, true); err != nil {
 				http.Error(w, "Invalid change set", 400)
 				return
 			}
+
+			if err := cs.Apply(h.resourceManager); err != nil {
+				http.Error(w, "Invalid change set", 400)
+				return
+			}
+
 			h.ledger.Write()
 			fmt.Fprintf(w, "")
 		default:

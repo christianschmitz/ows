@@ -27,10 +27,6 @@ func (c *AddUser) GetCategory() string {
 	return "permissions"
 }
 
-func (c *AddUser) GetResources() []ledger.ResourceId {
-	return []ledger.ResourceId{ledger.GenerateGlobalResourceId()}
-}
-
 var _AddUserRegistered = ledger.RegisterAction("permissions", "AddUser", func (attr []byte) (ledger.Action, error) {
 	var c AddUser
 	err := cbor.Unmarshal(attr, &c)

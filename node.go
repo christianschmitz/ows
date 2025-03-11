@@ -14,7 +14,7 @@ var _ActionsInitialized = actions.InitializeActions()
 func main() {
     initializeHomeDir()
 
-    l, err := ledger.ReadLedger()
+    l, err := ledger.ReadLedger(true)
     if err != nil {
         log.Fatal(err)
     }

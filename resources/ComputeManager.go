@@ -10,21 +10,23 @@ type ComputeConfig struct {
 }
 
 type ComputeManager struct {
-	Instances map[ledger.ResourceId]ComputeConfig
+	Instances map[string]ComputeConfig
 }
 
 func NewComputeManager() *ComputeManager {
 	return &ComputeManager{
-		map[ledger.ResourceId]ComputeConfig{},
+		map[string]ComputeConfig{},
 	}
 }
 
 func (m *ComputeManager) Add(id ledger.ResourceId, addr string) error {
-	if _, ok := m.Instances[id]; ok {
+	sId := ledger.StringifyResourceId(id)
+
+	if _, ok := m.Instances[sId]; ok {
 		return errors.New("resource added before")
 	}
 
-	m.Instances[id] = ComputeConfig{addr}
+	m.Instances[sId] = ComputeConfig{addr}
 
 	return nil
 }
