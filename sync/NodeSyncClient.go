@@ -79,13 +79,21 @@ func (c *NodeSyncClient) GetChangeSetHashes() (*ledger.ChangeSetHashes, error) {
 	hashes := make([]ledger.ChangeSetHash, len(rawHashes))
 
 	for i, rh := range rawHashes {
-		h, err := ledger.ParseChangeSetHash(rh)
+		if (i == 0) {
+			h, err := ledger.ParseProjectHash(rh)
+			if err != nil {
+				return nil, err
+			}
 
-		if err != nil {
-			return nil, err
+			hashes[i] = h
+		} else {
+			h, err := ledger.ParseChangeSetHash(rh)
+			if err != nil {
+				return nil, err
+			}
+
+			hashes[i] = h
 		}
-
-		hashes[i] = h
 	}
 
 	return &ledger.ChangeSetHashes{hashes}, nil

@@ -61,7 +61,7 @@ func (c *LedgerClient) Sync() error {
 		}
 	}
 
-	c.Ledger.Persist()
+	c.Ledger.Write()
 
 	return nil
 }
@@ -85,8 +85,8 @@ func (c *LedgerClient) GetChangeSetHashes() (*ledger.ChangeSetHashes, error) {
 	return node.GetChangeSetHashes()
 }
 
-func (c *LedgerClient) PublishChangeSet(cs *ledger.ChangeSet) {
+func (c *LedgerClient) PublishChangeSet(cs *ledger.ChangeSet) error {
 	node := c.pickNode()
 
-	node.PublishChangeSet(cs)
+	return node.PublishChangeSet(cs)
 }

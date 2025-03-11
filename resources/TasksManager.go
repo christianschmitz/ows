@@ -1,6 +1,7 @@
 package resources
 
 import (
+	"errors"
 	"ows/ledger"
 )
 
@@ -19,6 +20,12 @@ func NewTasksManager() *TasksManager {
 	}
 }
 
-func (m *TasksManager) Add(id ledger.ResourceId, handler string) {
+func (m *TasksManager) Add(id ledger.ResourceId, handler string) error {
+	if _, ok := m.Tasks[id]; ok {
+		return errors.New("task added before")
+	}
+
 	m.Tasks[id] = TaskConfig{"nodejs", handler}
+
+	return nil
 }

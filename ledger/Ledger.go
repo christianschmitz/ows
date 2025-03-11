@@ -2,7 +2,6 @@ package ledger
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"github.com/fxamacker/cbor/v2"
@@ -53,26 +52,33 @@ func getLedgerPath(genesis *ChangeSet) string {
 	return makeLedgerPath(projectPath)
 }
 
-func ReadLedger() *Ledger {
+func ReadLedger() (*Ledger, error) {
 	g, err := LookupGenesisChangeSet()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	gHash := g.Hash()
-
-	fmt.Println("Genesis: " + StringifyProjectHash(gHash))
 
 	ledgerPath := getLedgerPath(g)
 
 	l, ok := readLedger(ledgerPath)
 	if !ok {
-		l = &Ledger{[]ChangeSet{*g}, g.Hash()}
+		l = &Ledger{[]ChangeSet{*g}, gHash}
+		if err := l.ValidateAll(); err != nil {
+			return nil, err
+		}
 
-		l.Persist()
+		l.Write()
+	} else {
+		if err := l.ValidateAll(); err != nil {
+			return nil, err
+		}
 	}
 
-	return l
+	l.syncHead()
+
+	return l, nil
 }
 
 func readLedger(ledgerPath string) (*Ledger, bool) {
@@ -104,11 +110,19 @@ func (l *Ledger) KeepChangeSets(until int) {
 	l.syncHead()
 }
 
-// TODO: validate
-func (l *Ledger) AppendChangeSet(cs *ChangeSet) {
-	l.Changes = append(l.Changes, *cs)
+func (l *Ledger) AppendChangeSet(cs *ChangeSet) error {
+	backup := l.Changes
+
+	l.Changes = append(backup, *cs)
+
+	if err := l.ValidateAll(); err != nil {
+		l.Changes = backup
+		return err
+	}
 
 	l.syncHead()
+
+	return nil
 }
 
 func (l *Ledger) GetChangeSet(h ChangeSetHash) (*ChangeSet, bool) {
@@ -133,9 +147,9 @@ func (l *Ledger) GetChangeSet(h ChangeSetHash) (*ChangeSet, bool) {
 }
 
 func (l *Ledger) GetChangeSetHashes() *ChangeSetHashes {
-	hashes := make([]ChangeSetHash, 1 + len(l.Changes))
+	hashes := make([]ChangeSetHash, len(l.Changes))
 
-	for i := 0; i < 1 + len(l.Changes); i++ {
+	for i := 0; i < len(l.Changes); i++ {
 		if i+1 == len(l.Changes) {
 			hashes[i] = l.Head
 		} else if i+1 < len(l.Changes) {
@@ -150,7 +164,7 @@ func (l *Ledger) GetChangeSetHashes() *ChangeSetHashes {
 	}
 }
 
-func (l *Ledger) Persist() {
+func (l *Ledger) Write() {
 	ledgerPath := getLedgerPath(&(l.Changes[0]))
 
 	bytes := l.Encode()

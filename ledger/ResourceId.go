@@ -10,6 +10,16 @@ type ResourceIdGenerator = func () ResourceId
 
 const RESOURCE_ID_PREFIX = "resource"
 
+func GenerateGlobalResourceId() ResourceId {
+	globalResourceId := [32]byte{}
+
+	for i, _ := range globalResourceId {
+		globalResourceId[i] = 0
+	}
+
+	return globalResourceId
+}
+
 func StringifyResourceId(id ResourceId) string {
 	return StringifyHumanReadableBytes(RESOURCE_ID_PREFIX, id[:])
 }

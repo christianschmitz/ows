@@ -1,24 +1,25 @@
 package actions
 
 import (
-	"log"
+	"errors"
 	"ows/ledger"
 	"github.com/fxamacker/cbor/v2"
 )
 
 // adds a node
 type AddCompute struct {
+	BaseAction
 	Address string `cbor:"0,keyasint"`
 }
 
 func NewAddCompute(addr string) *AddCompute {
-	return &AddCompute{addr}
+	return &AddCompute{BaseAction{}, addr}
 }
 
-func (c *AddCompute) Apply(m ledger.ResourceManager, gen ledger.ResourceIdGenerator) {
+func (c *AddCompute) Apply(m ledger.ResourceManager, gen ledger.ResourceIdGenerator) error {
 	id := gen()
 
-	m.AddCompute(id, c.Address)
+	return m.AddCompute(id, c.Address)
 }
 
 func (c *AddCompute) GetName() string {
@@ -29,6 +30,10 @@ func (c *AddCompute) GetCategory() string {
 	return "compute"
 }
 
+func (c *AddCompute) GetResources() []ledger.ResourceId {
+	return []ledger.ResourceId{ledger.GenerateGlobalResourceId()}
+}
+
 var _AddComputeRegistered = ledger.RegisterAction("compute", "AddCompute", func (attr []byte) (ledger.Action, error) {
 	var c AddCompute
 	err := cbor.Unmarshal(attr, &c)
@@ -37,12 +42,16 @@ var _AddComputeRegistered = ledger.RegisterAction("compute", "AddCompute", func 
 
 // removes a node
 type RemoveCompute struct {
+	BaseAction
 	Id ledger.ResourceId `cbor:"0,keyasint"`
-	Address string `cbor:"1,keyasint"`
 }
 
-func (c *RemoveCompute) Apply(m ledger.ResourceManager, gen ledger.ResourceIdGenerator) {
-	log.Fatal("not yet implemented")
+func NewRemoveCompute(id ledger.ResourceId) *RemoveCompute {
+	return &RemoveCompute{BaseAction{}, id}
+}
+
+func (c *RemoveCompute) Apply(m ledger.ResourceManager, gen ledger.ResourceIdGenerator) error {
+	return errors.New("RemoveCompute.Apply() not yet implemented")
 }
 
 func (c *RemoveCompute) GetName() string {
@@ -51,6 +60,10 @@ func (c *RemoveCompute) GetName() string {
 
 func (c *RemoveCompute) GetCategory() string {
 	return "compute"
+}
+
+func (c *RemoveCompute) GetResources() []ledger.ResourceId {
+	return []ledger.ResourceId{c.Id}
 }
 
 var _RemoveComputeRegistered = ledger.RegisterAction("compute", "RemoveCompute", func (attr []byte) (ledger.Action, error) {

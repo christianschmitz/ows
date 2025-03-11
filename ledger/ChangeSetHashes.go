@@ -15,7 +15,11 @@ func (c *ChangeSetHashes) Stringify() string {
 	rawHashes := make([]string, len(c.Hashes))
 
 	for i, h := range c.Hashes {
-		rawHashes[i] = StringifyChangeSetHash(h)
+		if i == 0 {
+			rawHashes[i] = StringifyProjectHash(h)
+		} else {
+			rawHashes[i] = StringifyChangeSetHash(h)
+		}
 	}
 
 	j, err := json.Marshal(rawHashes)

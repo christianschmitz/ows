@@ -3,6 +3,7 @@ package ledger
 import (
 	"bytes"
 	"errors"
+	"strconv"
 	"strings"
 )
 
@@ -31,8 +32,26 @@ func ParseChangeSetHash(h string) (ChangeSetHash, error) {
 		return nil, err
 	}
 
-	if len(hash) != 32 || len(hash) != 0 {
-		return nil, errors.New("hash not exactly 0 or 32 bytes long")
+	if len(hash) != 32 && len(hash) != 0 {
+		return nil, errors.New("change set hash not exactly 0 or 32 bytes long, got " + strconv.Itoa(len(hash)) + " bytes")
+	}
+
+	return hash, nil
+}
+
+func ParseProjectHash(h string) (ChangeSetHash, error) {
+	if (strings.HasPrefix(h, "/")) {
+		h = h[1:]
+	}
+	
+	hash, err := ParseHumanReadableBytes(h, PROJECT_HASH_PREFIX)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(hash) != 32 && len(hash) != 0 {
+		return nil, errors.New("project hash not exactly 0 or 32 bytes long, got " + strconv.Itoa(len(hash)) + " bytes")
 	}
 
 	return hash, nil

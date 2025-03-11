@@ -14,8 +14,11 @@ type Action interface {
 	// valid categories are: compute, permissions
 	GetCategory() string
 	GetName() string
+	GetResources() []ResourceId
+	GetAddedNodes() []string
+	GetRemovedNodes() []string
 
-	Apply(m ResourceManager, gen ResourceIdGenerator)
+	Apply(m ResourceManager, gen ResourceIdGenerator) error
 }
 
 type ActionHelper struct {

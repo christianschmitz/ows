@@ -6,12 +6,17 @@ import (
 )
 
 type AddTask struct {
+	BaseAction
 	Runtime string `cbor:"0,keyasint"`
 	Handler string `cbor:"1,keyasint"`
 }
 
-func (c *AddTask) Apply(m ledger.ResourceManager, gen ledger.ResourceIdGenerator) {
-	m.AddTask(gen(), c.Handler)
+func NewAddTask(runtime string, handler string) *AddTask {
+	return &AddTask{BaseAction{}, runtime, handler}
+}
+
+func (c *AddTask) Apply(m ledger.ResourceManager, gen ledger.ResourceIdGenerator) error {
+	return m.AddTask(gen(), c.Handler)
 }
 
 func (c *AddTask) GetName() string {
@@ -20,6 +25,10 @@ func (c *AddTask) GetName() string {
 
 func (c *AddTask) GetCategory() string {
 	return "tasks"
+}
+
+func (c *AddTask) GetResources() []ledger.ResourceId {
+	return []ledger.ResourceId{ledger.GenerateGlobalResourceId()}
 }
 
 var _AddTaskRegistered = ledger.RegisterAction("tasks", "AddTask", func (attr []byte) (ledger.Action, error) {

@@ -87,8 +87,12 @@ func configureCLI() *cobra.Command {
                 log.Fatal(err)
             }
 
-            for _, h := range hashes.Hashes {
-                fmt.Printf("%s\n", ledger.StringifyChangeSetHash(h))
+            for i, h := range hashes.Hashes {
+                if i == 0 {
+                    fmt.Printf("%s\n", ledger.StringifyProjectHash(h))
+                } else {
+                    fmt.Printf("%s\n", ledger.StringifyChangeSetHash(h))
+                }
             }
         },
     })
@@ -105,22 +109,32 @@ func configureCLI() *cobra.Command {
             if len(args) != 1 {
                 log.Fatal("expected 1 arg")
             }
-
+            
+            key := getKeyPair()
             c := getSyncedLedgerClient()
 
             cs := &ledger.ChangeSet{
                 Parent: c.Ledger.Head,
-                Signatures: []ledger.Signature{}, // TODO: sign
                 Actions: []ledger.Action{
-                    &actions.AddTask{"nodejs", args[0]},
+                    actions.NewAddTask("nodejs", args[0]),
                 },
+                Signatures: []ledger.Signature{}, // TODO: sign
             }
 
-            c.PublishChangeSet(cs)
+            signature, err := key.SignChangeSet(cs)
+            if err != nil {
+                log.Fatal(err)
+            }
+
+            cs.Signatures = append(cs.Signatures, signature)
+
+            if err := c.PublishChangeSet(cs); err != nil {
+                log.Fatal(err)
+            }
 
             c.Ledger.AppendChangeSet(cs)
 
-            c.Ledger.Persist()
+            c.Ledger.Write()
         },
     })
 
@@ -130,7 +144,10 @@ func configureCLI() *cobra.Command {
 }
 
 func getSyncedLedgerClient() *sync.LedgerClient {
-    l := ledger.ReadLedger()
+    l, err := ledger.ReadLedger()
+    if err != nil {
+        log.Fatal(err)
+    }
 
     c := sync.NewLedgerClient(l)
     c.Sync()

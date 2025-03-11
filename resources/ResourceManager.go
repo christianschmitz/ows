@@ -16,10 +16,10 @@ func NewResourceManager() *ResourceManager {
 	}
 }
 
-func (m *ResourceManager) AddCompute(id ledger.ResourceId, addr string) {
-	m.Compute.Add(id, addr)
+func (m *ResourceManager) AddCompute(id ledger.ResourceId, addr string) error {
+	return m.Compute.Add(id, addr)
 }
 
-func (m *ResourceManager) AddTask(id ledger.ResourceId, handler string) {
-	m.Tasks.Add(id, handler)
+func (m *ResourceManager) AddTask(id ledger.ResourceId, handler string) error {
+	return m.Tasks.Add(id, handler)
 }

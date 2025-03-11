@@ -36,7 +36,7 @@ func ParseHumanReadableBytes(str string, expectedPrefix string) ([]byte, error) 
 		return nil, errors.New("unexpected bech32 prefix " + prefix)
 	}
 
-	return bs, nil
+	return bech32.ConvertBits(bs, 5, 8, false)
 }
 
 func ParseCompactBytes(str string) ([]byte, error) {

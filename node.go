@@ -2,6 +2,7 @@ package main
 
 import (
     "fmt"
+    "log"
     "os"
     "ows/actions"
     "ows/ledger"
@@ -13,7 +14,10 @@ var _ActionsInitialized = actions.InitializeActions()
 func main() {
     initializeHomeDir()
 
-    l := ledger.ReadLedger()
+    l, err := ledger.ReadLedger()
+    if err != nil {
+        log.Fatal(err)
+    }
 
     rm := resources.NewResourceManager()
 

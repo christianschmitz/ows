@@ -1,17 +1,22 @@
 package actions
 
 import (
-	"log"
+	"errors"
 	"ows/ledger"
 	"github.com/fxamacker/cbor/v2"
 )
 
 type AddUser struct {
+	BaseAction
 	Key ledger.PubKey `cbor:"0,keyasint"`
 }
 
-func (c *AddUser) Apply(m ledger.ResourceManager, gen ledger.ResourceIdGenerator) {
-	log.Fatal("not yet implemented")
+func NewAddUser(key ledger.PubKey) *AddUser {
+	return &AddUser{BaseAction{}, key}
+}
+
+func (c *AddUser) Apply(m ledger.ResourceManager, gen ledger.ResourceIdGenerator) error {
+	return errors.New("AddUser.Apply() not yet implemented")
 }
 
 func (c *AddUser) GetName() string {
@@ -20,6 +25,10 @@ func (c *AddUser) GetName() string {
 
 func (c *AddUser) GetCategory() string {
 	return "permissions"
+}
+
+func (c *AddUser) GetResources() []ledger.ResourceId {
+	return []ledger.ResourceId{ledger.GenerateGlobalResourceId()}
 }
 
 var _AddUserRegistered = ledger.RegisterAction("permissions", "AddUser", func (attr []byte) (ledger.Action, error) {

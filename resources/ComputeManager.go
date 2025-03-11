@@ -1,6 +1,7 @@
 package resources
 
 import (
+	"errors"
 	"ows/ledger"
 )
 
@@ -18,6 +19,12 @@ func NewComputeManager() *ComputeManager {
 	}
 }
 
-func (m *ComputeManager) Add(id ledger.ResourceId, addr string) {
+func (m *ComputeManager) Add(id ledger.ResourceId, addr string) error {
+	if _, ok := m.Instances[id]; ok {
+		return errors.New("resource added before")
+	}
+
 	m.Instances[id] = ComputeConfig{addr}
+
+	return nil
 }

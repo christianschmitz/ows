@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"bytes"
 	"log"
 	"github.com/fxamacker/cbor/v2"
 	"golang.org/x/crypto/sha3"
@@ -28,12 +29,18 @@ func DecodeChangeSet(bytes []byte) (*ChangeSet, error) {
 	return v.convertToChangeSet()
 }
 
-func (c *ChangeSet) Apply(m ResourceManager) {
+func (c *ChangeSet) Apply(m ResourceManager) error {
 	for i, a := range c.Actions {
-		a.Apply(m, func () ResourceId {
+		err := a.Apply(m, func () ResourceId {
 			return GenerateResourceId(c.Parent, i)
 		})
+
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 func (c *ChangeSet) Encode(forSigning bool) ([]byte, error) {
@@ -80,4 +87,26 @@ func (c *ChangeSet) convertToChangeSetCbor(forSigning bool) ChangeSetCbor {
 	}
 
 	return ChangeSetCbor{c.Parent[:], actions, signatures}
+}
+
+func (c *ChangeSet) CollectSignatories() []PubKey {
+	signatures := c.Signatures[:]
+	users := []PubKey{}
+
+	for _, s := range signatures {
+		unique := true
+
+		for _, pk := range users {
+			if bytes.Equal(pk[:], s.Key[:]) {
+				unique = false
+				break
+			}
+		}
+
+		if (unique) {
+			users = append(users, s.Key)
+		}
+	}
+
+	return users
 }

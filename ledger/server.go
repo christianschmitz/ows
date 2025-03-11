@@ -82,8 +82,11 @@ func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			h.ledger.AppendChangeSet(cs)
-			h.ledger.Persist()
+			if err := h.ledger.AppendChangeSet(cs); err != nil {
+				http.Error(w, "Invalid change set", 400)
+				return
+			}
+			h.ledger.Write()
 			fmt.Fprintf(w, "")
 		default:
 			http.Error(w, "unhandled sync POST path " + r.URL.Path, 404)

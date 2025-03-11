@@ -35,6 +35,11 @@ func LookupGenesisChangeSet() (*ChangeSet, error) {
 		if ok {
 			return singletonChangeSet, nil
 		}
+
+		defaultProfileChangeSet, ok := useDefaultProfileGenesis()
+		if ok {
+			return defaultProfileChangeSet, nil
+		}
 		
 		return nil, errors.New(GENESIS_ENV_VAR_NAME + " is not set")
 	}
@@ -80,4 +85,31 @@ func useSingletonProjectGenesis() (*ChangeSet, bool) {
 	}
 
 	return &(l.Changes[0]), true
+}
+
+func useDefaultProfileGenesis() (*ChangeSet, bool) {
+	path := HomeDir + "/profiles/default"
+
+	if _, err := os.Stat(path); err == nil {
+		bytes, err := os.ReadFile(path)
+		if err != nil {
+			return nil, false
+		}
+
+		str := string(bytes)
+
+		bs, err := ParseCompactBytes(str)
+		if err != nil {
+			return nil, false
+		}
+
+		cs, err := DecodeGenesisChangeSet(bs)
+		if err != nil {
+			return nil, false
+		}
+
+		return cs, true
+	} else {
+		return nil, false
+	}
 }
