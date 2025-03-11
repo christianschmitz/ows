@@ -31,14 +31,14 @@ func DecodeGenesisChangeSet(bs []byte) (*ChangeSet, error) {
 func LookupGenesisChangeSet() (*ChangeSet, error) {
 	str, exists := os.LookupEnv(GENESIS_ENV_VAR_NAME)
 	if !exists {
-		singletonChangeSet, ok := useSingletonProjectGenesis()
-		if ok {
-			return singletonChangeSet, nil
-		}
-
 		defaultProfileChangeSet, ok := useDefaultProfileGenesis()
 		if ok {
 			return defaultProfileChangeSet, nil
+		}
+		
+		singletonChangeSet, ok := useSingletonProjectGenesis()
+		if ok {
+			return singletonChangeSet, nil
 		}
 		
 		return nil, errors.New(GENESIS_ENV_VAR_NAME + " is not set")
