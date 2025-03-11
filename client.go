@@ -97,6 +97,32 @@ func configureCLI() *cobra.Command {
         },
     })
 
+    root.AddCommand(&cobra.Command{
+        Use: "upload",
+        Short: "Upload file (fails for directories)",
+        Run: func(cmd *cobra.Command, args []string) {
+            if len(args) < 1 {
+                log.Fatal("expected at least 1 arg")
+            }
+
+            c := getSyncedLedgerClient()
+
+            for _, arg := range args {
+                bs, err := os.ReadFile(arg)
+                if err != nil {
+                    log.Fatal(err)
+                }
+
+                id, err := c.UploadFile(bs)  
+                if err != nil {
+                    log.Fatal(err)
+                }
+
+                fmt.Printf("%s: %s\n", arg, ledger.StringifyAssetId(id))
+            }
+        },
+    })
+
     tasks := &cobra.Command{
         Use: "tasks",
         Short: "Manage tasks",

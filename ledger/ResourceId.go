@@ -2,6 +2,8 @@ package ledger
 
 import (
 	"errors"
+	"log"
+	"golang.org/x/crypto/sha3"
 )
 
 type ResourceId = [32]byte
@@ -18,6 +20,24 @@ func GenerateGlobalResourceId() ResourceId {
 	}
 
 	return globalResourceId
+}
+
+func GenerateResourceId(parentId []byte, index int) ResourceId {
+	if (index < 0) {
+		log.Fatal("invalid negative index in GenerateResourceId")
+	}
+
+	indexBytes := []byte{}
+
+	// custom little endian encoding
+	for index >= 256 {
+		indexBytes = append(indexBytes, byte(index%256))
+		index = index/256
+	}
+
+	indexBytes = append(indexBytes, byte(index))
+
+	return sha3.Sum256(append(parentId, indexBytes...))
 }
 
 func StringifyResourceId(id ResourceId) string {

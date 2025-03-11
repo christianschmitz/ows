@@ -1,10 +1,12 @@
 package ledger
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 )
@@ -90,6 +92,42 @@ func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "")
 		default:
 			http.Error(w, "unhandled sync POST path " + r.URL.Path, 404)
+		}
+	case "PUT":
+		switch r.URL.Path {
+		case "/assets":
+			defer r.Body.Close()
+
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, "Empty body", 400)
+				return
+			}
+
+			id := GenerateAssetId(body)
+
+			assetsDir := HomeDir + "/assets"
+
+			if err := os.MkdirAll(assetsDir, os.ModePerm); err != nil {
+				http.Error(w, "Unable to make assets dir", 500)
+				return
+			}
+
+			path := assetsDir + "/" + StringifyAssetId(id)
+
+			if _, err := os.Stat(path); err != nil {
+				if errors.Is(err, os.ErrNotExist) {
+					if err := os.WriteFile(path, body, 0644); err != nil {
+						http.Error(w, "write error", 500)
+						return
+					}
+				} else {
+					http.Error(w, path + " error", 500)
+					return
+				}
+			}
+
+			fmt.Fprintf(w, "%s", StringifyAssetId(id))
 		}
 	default:
 		http.Error(w, "unsupported sync http method " + r.Method, 404)

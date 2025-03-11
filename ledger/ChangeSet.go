@@ -13,10 +13,6 @@ type ChangeSet struct {
 	Signatures []Signature
 }
 
-func GenerateResourceId(parentId []byte, i int) ResourceId {
-	return sha3.Sum256(append(parentId, byte(i)))
-}
-
 func DecodeChangeSet(bytes []byte) (*ChangeSet, error) {
 	v := ChangeSetCbor{}
 

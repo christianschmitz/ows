@@ -116,3 +116,29 @@ func (c *NodeSyncClient) PublishChangeSet(cs *ledger.ChangeSet) error {
 
 	return nil
 }
+
+func (c *NodeSyncClient) UploadFile(bs []byte) (ledger.AssetId, error) {
+	req, err := http.NewRequest("PUT", c.url("assets"), bytes.NewBuffer(bs))
+	if err != nil {
+		return [32]byte{}, err
+	}
+
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return [32]byte{}, err
+	}
+
+	if resp.StatusCode != 200 {
+		return [32]byte{}, errors.New("Upload error " + resp.Status)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return [32]byte{}, err	
+	}
+
+	return ledger.ParseAssetId(string(body))
+}

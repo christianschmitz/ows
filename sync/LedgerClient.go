@@ -21,7 +21,7 @@ func NewLedgerClient(l *ledger.Ledger) *LedgerClient {
 // Find the intersection (last common point)
 // Download everything after the intersection
 func (c *LedgerClient) Sync() error {
-	node := c.pickNode()
+	node := c.PickNode()
 
 	head, err := node.GetHead()
 	if err != nil {
@@ -67,7 +67,7 @@ func (c *LedgerClient) Sync() error {
 }
 
 // returns the node address
-func (c *LedgerClient) pickNode() *NodeSyncClient {
+func (c *LedgerClient) PickNode() *NodeSyncClient {
 	m := actions.GetNodeAddresses(c.Ledger)
 
 	for _, a := range m {
@@ -80,13 +80,19 @@ func (c *LedgerClient) pickNode() *NodeSyncClient {
 }
 
 func (c *LedgerClient) GetChangeSetHashes() (*ledger.ChangeSetHashes, error) {
-	node := c.pickNode()
+	node := c.PickNode()
 
 	return node.GetChangeSetHashes()
 }
 
 func (c *LedgerClient) PublishChangeSet(cs *ledger.ChangeSet) error {
-	node := c.pickNode()
+	node := c.PickNode()
 
 	return node.PublishChangeSet(cs)
+}
+
+func (c *LedgerClient) UploadFile(bs []byte) (ledger.AssetId, error) {
+	node := c.PickNode()
+
+	return node.UploadFile(bs)
 }
