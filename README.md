@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Open Web Services (OWS) is an **Open Source alternative for** some of **AWS**'s managed services:
+Open Web Services (OWS) is an Open Source alternative for some of AWS's managed services:
 
 | Service              | AWS equivalent   | Implemented |
 | -------------------- | ---------------- | ----------- |

@@ -1,2 +1,2 @@
 #!/bin/bash
-go build -o ./dist/ows-node ./node.go
+go build -C ./src -o ../dist/ows-node ./node/main.go

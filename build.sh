@@ -1,5 +1,5 @@
 #!/bin/bash
-go mod tidy
+go -C ./src mod tidy
 ./build-client.sh
 ./build-node.sh
 ./build-doc.sh
