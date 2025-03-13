@@ -37,7 +37,7 @@ The OWS client can derive change sets from JSON files [], allowing OWS nodes to 
    1. [P2P Network](./doc/specification/01-P2P_network.md)
    2. [Ledger](./doc/specification/02-Ledger.md)
    3. [Node](./doc/specification/03-Node.md)
-   4. [Client](./doc/specifications/04-Client.md)
+   4. [Client](./doc/specification/04-Client.md)
 
 ### Motivation
 
