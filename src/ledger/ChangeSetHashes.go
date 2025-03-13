@@ -34,7 +34,7 @@ func (c *ChangeSetHashes) Stringify() string {
 // the returned int is the index of the intersection in `a` and `b`
 func (a *ChangeSetHashes) FindIntersection(b *ChangeSetHashes) (int, error) {
 	n := len(a.Hashes)
-	if (n > len(b.Hashes)) {
+	if n > len(b.Hashes) {
 		n = len(b.Hashes)
 	}
 
@@ -45,13 +45,13 @@ func (a *ChangeSetHashes) FindIntersection(b *ChangeSetHashes) (int, error) {
 		if IsSameChangeSetHash(ha, hb) {
 			continue
 		} else {
-			if (i == 0) {
+			if i == 0 {
 				return -1, errors.New("no common intersection found")
 			} else {
-				return i-1, nil
+				return i - 1, nil
 			}
 		}
 	}
 
-	return n-1, nil
+	return n - 1, nil
 }

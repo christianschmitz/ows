@@ -4,11 +4,11 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"time"	
+	"time"
 )
 
 type GatewaysManager struct {
-	Tasks *TasksManager
+	Tasks    *TasksManager
 	Gateways map[string]*Gateway
 }
 
@@ -26,10 +26,10 @@ func (m *GatewaysManager) Add(id string, port int) error {
 	}
 
 	s := &http.Server{
-		Addr: ":" + strconv.Itoa(port),
-		Handler: h,
-		ReadTimeout: 10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		Addr:           ":" + strconv.Itoa(port),
+		Handler:        h,
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
 

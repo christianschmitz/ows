@@ -20,10 +20,10 @@ func StringifyProjectHash(h ChangeSetHash) string {
 }
 
 func ParseChangeSetHash(h string) (ChangeSetHash, error) {
-	if (strings.HasPrefix(h, "/")) {
+	if strings.HasPrefix(h, "/") {
 		h = h[1:]
 	}
-	
+
 	hash, err := ParseHumanReadableBytes(h, CHANGE_SET_HASH_PREFIX)
 	if err != nil {
 		return nil, err
@@ -33,10 +33,10 @@ func ParseChangeSetHash(h string) (ChangeSetHash, error) {
 }
 
 func ParseProjectHash(h string) (ChangeSetHash, error) {
-	if (strings.HasPrefix(h, "/")) {
+	if strings.HasPrefix(h, "/") {
 		h = h[1:]
 	}
-	
+
 	hash, err := ParseHumanReadableBytes(h, PROJECT_HASH_PREFIX)
 	if err != nil {
 		return nil, err

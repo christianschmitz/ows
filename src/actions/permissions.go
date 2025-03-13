@@ -2,8 +2,8 @@ package actions
 
 import (
 	"errors"
-	"ows/ledger"
 	"github.com/fxamacker/cbor/v2"
+	"ows/ledger"
 )
 
 type AddUser struct {
@@ -27,7 +27,7 @@ func (c *AddUser) GetCategory() string {
 	return "permissions"
 }
 
-var _AddUserRegistered = ledger.RegisterAction("permissions", "AddUser", func (attr []byte) (ledger.Action, error) {
+var _AddUserRegistered = ledger.RegisterAction("permissions", "AddUser", func(attr []byte) (ledger.Action, error) {
 	var c AddUser
 	err := cbor.Unmarshal(attr, &c)
 	return &c, err

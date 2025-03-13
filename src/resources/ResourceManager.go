@@ -1,12 +1,11 @@
 package resources
 
-import (
-)
+import ()
 
 type ResourceManager struct {
-	Compute *ComputeManager
+	Compute  *ComputeManager
 	Gateways *GatewaysManager
-	Tasks *TasksManager
+	Tasks    *TasksManager
 }
 
 func NewResourceManager() *ResourceManager {

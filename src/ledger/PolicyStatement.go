@@ -6,20 +6,20 @@ import (
 
 type PolicyStatement struct {
 	Resources []string // "*" or "resource..."
-	Actions []string // "*" or "<category>:*" or "<category>:<action-name>"
-	Effect string // "Allow" or "Deny"
+	Actions   []string // "*" or "<category>:*" or "<category>:<action-name>"
+	Effect    string   // "Allow" or "Deny"
 }
 
 func GenerateRootPolicyStatement() PolicyStatement {
 	return PolicyStatement{
 		Resources: []string{"*"},
-		Actions: []string{"*"},
-		Effect: "Allow",
+		Actions:   []string{"*"},
+		Effect:    "Allow",
 	}
 }
 
 func (s *PolicyStatement) Allows(resource string, category string, action string) bool {
-	if (s.Effect == "Allow") {
+	if s.Effect == "Allow" {
 		return s.matches(resource, category, action)
 	} else {
 		return false
@@ -27,7 +27,7 @@ func (s *PolicyStatement) Allows(resource string, category string, action string
 }
 
 func (s *PolicyStatement) Denies(resource string, category string, action string) bool {
-	if (s.Effect == "Deny") {
+	if s.Effect == "Deny" {
 		return s.matches(resource, category, action)
 	} else {
 		return false
@@ -40,7 +40,7 @@ func (s *PolicyStatement) matches(resource string, category string, action strin
 
 func (s *PolicyStatement) matchesResource(resourceId string) bool {
 	for _, r := range s.Resources {
-		if (r == "*") {
+		if r == "*" {
 			return true
 		} else if r == resourceId {
 			return true
@@ -51,7 +51,7 @@ func (s *PolicyStatement) matchesResource(resourceId string) bool {
 }
 
 func (s *PolicyStatement) matchesCategory(category string) bool {
-	for _, a := range s.Actions{
+	for _, a := range s.Actions {
 		if a == "*" {
 			return true
 		}
@@ -67,7 +67,7 @@ func (s *PolicyStatement) matchesCategory(category string) bool {
 }
 
 func (s *PolicyStatement) matchesAction(name string) bool {
-	for _, a := range s.Actions{
+	for _, a := range s.Actions {
 		if a == "*" {
 			return true
 		}
@@ -76,7 +76,7 @@ func (s *PolicyStatement) matchesAction(name string) bool {
 
 		if len(fields) == 2 && (fields[1] == "*" || fields[1] == name) {
 			return true
-		} 
+		}
 	}
 
 	return false

@@ -2,8 +2,8 @@ package ledger
 
 import (
 	"bytes"
-	"log"
 	"github.com/fxamacker/cbor/v2"
+	"log"
 )
 
 type ChangeSet struct {
@@ -20,13 +20,12 @@ func DecodeChangeSet(bytes []byte) (*ChangeSet, error) {
 		return nil, err
 	}
 
-	
 	return v.convertToChangeSet()
 }
 
 func (c *ChangeSet) Apply(m ResourceManager) error {
 	for i, a := range c.Actions {
-		err := a.Apply(m, func (prefix string) string {
+		err := a.Apply(m, func(prefix string) string {
 			return GenerateResourceId(prefix, c.Parent, i)
 		})
 
@@ -98,7 +97,7 @@ func (c *ChangeSet) CollectSigners() []PubKey {
 			}
 		}
 
-		if (unique) {
+		if unique {
 			users = append(users, s.Key)
 		}
 	}

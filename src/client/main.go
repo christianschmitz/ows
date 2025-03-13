@@ -1,269 +1,269 @@
 package main
 
 import (
-    "fmt"
-    "log"
-    "os"
-    "strconv"
-    "strings"
-    "github.com/spf13/cobra"
-    "ows/actions"
-    "ows/ledger"
-    "ows/sync"
+	"fmt"
+	"github.com/spf13/cobra"
+	"log"
+	"os"
+	"ows/actions"
+	"ows/ledger"
+	"ows/sync"
+	"strconv"
+	"strings"
 )
 
 var _ActionsInitialized = actions.InitializeActions()
 
 func main() {
-    initializeHomeDir()
-    
-    root := configureCLI()
+	initializeHomeDir()
 
-    root.Execute()
+	root := configureCLI()
+
+	root.Execute()
 }
 
 func initializeHomeDir() {
-    path, exists := os.LookupEnv("HOME")
+	path, exists := os.LookupEnv("HOME")
 
-    if (!exists) {
-        log.Fatal("env variable HOME not set")
-    }
+	if !exists {
+		log.Fatal("env variable HOME not set")
+	}
 
-    ledger.SetHomeDir(path + "/.ows/client")
+	ledger.SetHomeDir(path + "/.ows/client")
 }
 
 func configureCLI() *cobra.Command {
-    root := &cobra.Command{
+	root := &cobra.Command{
 		Use:   "ows",
 		Short: "Open Web Services CLI",
 	}
 
-    root.AddCommand(&cobra.Command{
-        Use: "init",
-        Short: "Create genesis config",
-        Run: makeInitialConfig,
-    })
+	root.AddCommand(&cobra.Command{
+		Use:   "init",
+		Short: "Create genesis config",
+		Run:   makeInitialConfig,
+	})
 
-    root.AddCommand(&cobra.Command{
-        Use: "nodes",
-        Short: "List and manage nodes",
-        Run: listNodes,
-    })
+	root.AddCommand(&cobra.Command{
+		Use:   "nodes",
+		Short: "List and manage nodes",
+		Run:   listNodes,
+	})
 
-    root.AddCommand(&cobra.Command{
-        Use: "hashes",
-        Short: "List config change hashes (including genesis)",
-        Run: listChangeSets,
-    })
+	root.AddCommand(&cobra.Command{
+		Use:   "hashes",
+		Short: "List config change hashes (including genesis)",
+		Run:   listChangeSets,
+	})
 
-    root.AddCommand(&cobra.Command{
-        Use: "assets",
-        Short: "List assets",
-        Run: listAssets,
-    })
-    root.AddCommand(&cobra.Command{
-        Use: "upload",
-        Short: "Upload file (fails for directories)",
-        Run: uploadAssets,
-    })
+	root.AddCommand(&cobra.Command{
+		Use:   "assets",
+		Short: "List assets",
+		Run:   listAssets,
+	})
+	root.AddCommand(&cobra.Command{
+		Use:   "upload",
+		Short: "Upload file (fails for directories)",
+		Run:   uploadAssets,
+	})
 
-    gateways := &cobra.Command{
-        Use: "gateways",
-        Short: "List and manage gateways",
-        Run: listGateways,
-    }
+	gateways := &cobra.Command{
+		Use:   "gateways",
+		Short: "List and manage gateways",
+		Run:   listGateways,
+	}
 
-    gateways.AddCommand(&cobra.Command{
-        Use: "add",
-        Short: "Create a new gateway",
-        Run: func (cmd *cobra.Command, args []string) {
-            if len(args) != 1 {
-                log.Fatal("expected 1 arg")
-            }
+	gateways.AddCommand(&cobra.Command{
+		Use:   "add",
+		Short: "Create a new gateway",
+		Run: func(cmd *cobra.Command, args []string) {
+			if len(args) != 1 {
+				log.Fatal("expected 1 arg")
+			}
 
-            port, err := strconv.Atoi(args[0])
-            if err != nil {
-                log.Fatal(err)
-            }
+			port, err := strconv.Atoi(args[0])
+			if err != nil {
+				log.Fatal(err)
+			}
 
-            createChangeSet(actions.NewAddGateway(port))
-        },
-    })
+			createChangeSet(actions.NewAddGateway(port))
+		},
+	})
 
-    gateways.AddCommand(&cobra.Command{
-        Use: "remove",
-        Short: "Remove a gateway",
-        Run: func (cmd *cobra.Command, args []string) {
-            if len(args) != 1 {
-                log.Fatal("expected 1 arg")
-            }
+	gateways.AddCommand(&cobra.Command{
+		Use:   "remove",
+		Short: "Remove a gateway",
+		Run: func(cmd *cobra.Command, args []string) {
+			if len(args) != 1 {
+				log.Fatal("expected 1 arg")
+			}
 
-            gatewayId := args[0]
-            if err := ledger.ValidateResourceId(gatewayId, "gateway"); err != nil {
-                log.Fatal(err)
-            }
+			gatewayId := args[0]
+			if err := ledger.ValidateResourceId(gatewayId, "gateway"); err != nil {
+				log.Fatal(err)
+			}
 
-            createChangeSet(actions.NewRemoveGateway(gatewayId))
-        },
-    })
+			createChangeSet(actions.NewRemoveGateway(gatewayId))
+		},
+	})
 
-    gateways.AddCommand(&cobra.Command{
-        Use: "add-endpoint",
-        Short: "Add an endpoint task to a gateway",
-        Run: func (cmd *cobra.Command, args []string) {
-            if len(args) != 4 {
-                log.Fatal("expected 4 args")
-            }
+	gateways.AddCommand(&cobra.Command{
+		Use:   "add-endpoint",
+		Short: "Add an endpoint task to a gateway",
+		Run: func(cmd *cobra.Command, args []string) {
+			if len(args) != 4 {
+				log.Fatal("expected 4 args")
+			}
 
-            gatewayId := args[0]
-            if err := ledger.ValidateResourceId(gatewayId, "gateway"); err != nil {
-                log.Fatal(err)
-            }
+			gatewayId := args[0]
+			if err := ledger.ValidateResourceId(gatewayId, "gateway"); err != nil {
+				log.Fatal(err)
+			}
 
-            method := args[1]
-            if (method != "GET" && method != "POST" && method != "PUT" && method != "PATCH" && method != "DELETE") {
-                log.Fatal("invalid method " + method)
-            }
+			method := args[1]
+			if method != "GET" && method != "POST" && method != "PUT" && method != "PATCH" && method != "DELETE" {
+				log.Fatal("invalid method " + method)
+			}
 
-            path := args[2]
+			path := args[2]
 
-            taskId := args[3]
-            if err := ledger.ValidateResourceId(taskId, "task"); err != nil {
-                log.Fatal(err)
-            }
+			taskId := args[3]
+			if err := ledger.ValidateResourceId(taskId, "task"); err != nil {
+				log.Fatal(err)
+			}
 
-            createChangeSet(actions.NewAddGatewayEndpoint(gatewayId, method, path, taskId))            
-        },
-    })
+			createChangeSet(actions.NewAddGatewayEndpoint(gatewayId, method, path, taskId))
+		},
+	})
 
-    root.AddCommand(gateways)
+	root.AddCommand(gateways)
 
-    tasks := &cobra.Command{
-        Use: "tasks",
-        Short: "List and manage tasks",
-        Run: func(cmd *cobra.Command, args []string) {
-            if len(args) != 0 {
-                log.Fatal("unexpected args")
-            }
+	tasks := &cobra.Command{
+		Use:   "tasks",
+		Short: "List and manage tasks",
+		Run: func(cmd *cobra.Command, args []string) {
+			if len(args) != 0 {
+				log.Fatal("unexpected args")
+			}
 
-            c := getSyncedLedgerClient()
+			c := getSyncedLedgerClient()
 
-            tasks := actions.ListTasks(c.Ledger)
+			tasks := actions.ListTasks(c.Ledger)
 
-            for id, config := range tasks {
-                fmt.Printf("%s %s %s\n", id, config.Runtime, config.Handler)
-            }
-        },
-    }
+			for id, config := range tasks {
+				fmt.Printf("%s %s %s\n", id, config.Runtime, config.Handler)
+			}
+		},
+	}
 
-    tasks.AddCommand(&cobra.Command{
-        Use: "add",
-        Short: "Create a new task",
-        Run: func(cmd *cobra.Command, args []string) {
-            if len(args) != 2 {
-                log.Fatal("expected 2 args")
-            }
+	tasks.AddCommand(&cobra.Command{
+		Use:   "add",
+		Short: "Create a new task",
+		Run: func(cmd *cobra.Command, args []string) {
+			if len(args) != 2 {
+				log.Fatal("expected 2 args")
+			}
 
-            c := getSyncedLedgerClient()
+			c := getSyncedLedgerClient()
 
-            runtime := args[0]
+			runtime := args[0]
 
-            if runtime != "nodejs" {
-                log.Fatal("only nodejs runtime is currently supported")
-            }
+			if runtime != "nodejs" {
+				log.Fatal("only nodejs runtime is currently supported")
+			}
 
-            handler := args[1]
-            
-            id := ""
-            if bs, err := os.ReadFile(handler); err == nil {
-                // upload the file first
-                
-                id, err = c.UploadFile(bs)
-                if err != nil {
-                    log.Fatal(err)
-                }
-            } else if strings.HasPrefix(handler, "asset") {
-                if err := ledger.ValidateResourceId(handler, "asset"); err != nil {
-                    log.Fatal(err)
-                }
+			handler := args[1]
 
-                id = handler
-            } else {
-                log.Fatal("invalid handler asset " + handler)
-            }
+			id := ""
+			if bs, err := os.ReadFile(handler); err == nil {
+				// upload the file first
 
-            cs := c.Ledger.NewChangeSet(actions.NewAddTask("nodejs", id))
+				id, err = c.UploadFile(bs)
+				if err != nil {
+					log.Fatal(err)
+				}
+			} else if strings.HasPrefix(handler, "asset") {
+				if err := ledger.ValidateResourceId(handler, "asset"); err != nil {
+					log.Fatal(err)
+				}
 
-            if err := signAndSubmitChangeSet(c, cs); err != nil {
-                log.Fatal(err)
-            }
-        },
-    })
+				id = handler
+			} else {
+				log.Fatal("invalid handler asset " + handler)
+			}
 
-    root.AddCommand(tasks)
+			cs := c.Ledger.NewChangeSet(actions.NewAddTask("nodejs", id))
 
-    return root
+			if err := signAndSubmitChangeSet(c, cs); err != nil {
+				log.Fatal(err)
+			}
+		},
+	})
+
+	root.AddCommand(tasks)
+
+	return root
 }
 
 func getSyncedLedgerClient() *sync.LedgerClient {
-    l, err := ledger.ReadLedger(false)
-    if err != nil {
-        log.Fatal(err)
-    }
+	l, err := ledger.ReadLedger(false)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    c := sync.NewLedgerClient(l)
+	c := sync.NewLedgerClient(l)
 
-    if err := c.Sync(); err != nil {
-        log.Fatal(err)
-    }
+	if err := c.Sync(); err != nil {
+		log.Fatal(err)
+	}
 
-    return c
+	return c
 }
 
 func readLedger() *ledger.Ledger {
-    c := getSyncedLedgerClient()
+	c := getSyncedLedgerClient()
 
-    return c.Ledger
+	return c.Ledger
 }
 
 func getKeyPair() *ledger.KeyPair {
-    p, err := ledger.ReadKeyPair(ledger.HomeDir + "/key", true)
+	p, err := ledger.ReadKeyPair(ledger.HomeDir+"/key", true)
 
-    if err != nil {
-        log.Fatal(err)
-    }
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    return p
+	return p
 }
 
 func signAndSubmitChangeSet(client *sync.LedgerClient, cs *ledger.ChangeSet) error {
-    key := getKeyPair()
+	key := getKeyPair()
 
-    signature, err := key.SignChangeSet(cs)
-    if err != nil {
-        return err
-    }
+	signature, err := key.SignChangeSet(cs)
+	if err != nil {
+		return err
+	}
 
-    cs.Signatures = append(cs.Signatures, signature)
+	cs.Signatures = append(cs.Signatures, signature)
 
-    if err := client.PublishChangeSet(cs); err != nil {
-        return err
-    }
+	if err := client.PublishChangeSet(cs); err != nil {
+		return err
+	}
 
-    if err := client.Ledger.AppendChangeSet(cs, false); err != nil {
-        return err
-    }
+	if err := client.Ledger.AppendChangeSet(cs, false); err != nil {
+		return err
+	}
 
-    client.Ledger.Write()
+	client.Ledger.Write()
 
-    return err
+	return err
 }
 
 // creates change set, signs it, then submits it
 func createChangeSet(actions ...ledger.Action) {
-    c := getSyncedLedgerClient()
-    cs := c.Ledger.NewChangeSet(actions...)
-    if err := signAndSubmitChangeSet(c, cs); err != nil {
-        log.Fatal(err)
-    }
+	c := getSyncedLedgerClient()
+	cs := c.Ledger.NewChangeSet(actions...)
+	if err := signAndSubmitChangeSet(c, cs); err != nil {
+		log.Fatal(err)
+	}
 }

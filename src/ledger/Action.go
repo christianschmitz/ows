@@ -2,15 +2,15 @@ package ledger
 
 import (
 	"errors"
-	"log"
 	"github.com/fxamacker/cbor/v2"
+	"log"
 )
 
 type ActionGenerator = func(attrBytes []byte) (Action, error)
 
 var ACTIONS = map[string]map[string]ActionGenerator{}
 
-type Action interface { 
+type Action interface {
 	// valid categories are: compute, permissions
 	GetCategory() string
 	GetName() string
@@ -65,8 +65,8 @@ func (h *ActionHelper) convertToActionCbor() ActionCbor {
 	}
 
 	return ActionCbor{
-		Category: h.action.GetCategory(),
-		Name: h.action.GetName(),
+		Category:   h.action.GetCategory(),
+		Name:       h.action.GetName(),
 		Attributes: attr,
 	}
 }

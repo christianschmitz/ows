@@ -6,15 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
 	"os/exec"
+	"ows/ledger"
 	"strings"
 	"time"
-	"github.com/google/uuid"
-	"ows/ledger"
 )
 
 const DOCKER_IMAGE_NAME = "ows_nodejs_image"
@@ -32,7 +32,7 @@ type TaskConfig struct {
 
 type TasksManager struct {
 	dockerInitialized bool
-	Tasks map[string]TaskConfig
+	Tasks             map[string]TaskConfig
 }
 
 func NewTasksManager() *TasksManager {
@@ -47,7 +47,7 @@ func (m *TasksManager) Add(id string, handler string) error {
 		return errors.New("task added before")
 	}
 
-	if (!m.dockerInitialized) {
+	if !m.dockerInitialized {
 		if err := initializeDocker(); err != nil {
 			fmt.Println("failed to initialize docker", err)
 			return err
@@ -124,11 +124,11 @@ func runNodeScriptInDocker(handler string, arg interface{}) (interface{}, error)
 	defer os.RemoveAll(tmpDir)
 
 	// write the necessary files
-	if err := copyAsset(handler, tmpDir + "/" + NODEJS_HANDLER_NAME); err != nil {
+	if err := copyAsset(handler, tmpDir+"/"+NODEJS_HANDLER_NAME); err != nil {
 		return nil, err
 	}
 
-	if err := writeJson(arg, tmpDir + "/" + NODEJS_INPUT_NAME); err != nil {
+	if err := writeJson(arg, tmpDir+"/"+NODEJS_INPUT_NAME); err != nil {
 		fmt.Println("failed to write input")
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func runNodeScriptInDocker(handler string, arg interface{}) (interface{}, error)
 
 	// run the docker container
 	// TODO: send command to IPC socket instead
-	conn, err := net.Dial("unix", ledger.HomeDir + "/tmp/" + IPC_SOCKET_NAME)
+	conn, err := net.Dial("unix", ledger.HomeDir+"/tmp/"+IPC_SOCKET_NAME)
 	if err != nil {
 		return nil, err
 	}
@@ -172,27 +172,27 @@ func runNodeScriptInDocker(handler string, arg interface{}) (interface{}, error)
 					if em, ok := e.(string); ok {
 						return nil, errors.New(em)
 					} else {
-						return nil, errors.New("unexpected output format")			
+						return nil, errors.New("unexpected output format")
 					}
 				} else {
-					return nil, errors.New("unexpected output format")	
+					return nil, errors.New("unexpected output format")
 				}
 			} else {
 				if r, ok := output["result"]; ok {
 					return r, nil
 				} else {
-					return nil, errors.New("unexpected output format")			
+					return nil, errors.New("unexpected output format")
 				}
 			}
 		} else {
-			return nil, errors.New("unexpected output format")	
+			return nil, errors.New("unexpected output format")
 		}
 	} else {
 		return nil, errors.New("unexpected output format")
 	}
 
 	//cmd := exec.Command("docker", "exec", DOCKER_CONTAINER_NAME, "node", "/app/" + NODEJS_RUNNER_NAME, uuid)
-//
+	//
 	//var stderr bytes.Buffer
 	//cmd.Stderr = &stderr
 	//
@@ -203,20 +203,20 @@ func runNodeScriptInDocker(handler string, arg interface{}) (interface{}, error)
 	//	fmt.Println("Output: ", output)
 	//	return nil, err
 	//}
-//
 	//
 	//
-//
+	//
+	//
 	//fmt.Println("done running, reading output")
-//
+	//
 	//output, err := readJson(tmpDir + "/" + NODEJS_OUTPUT_NAME)
 	//if err != nil {
 	//	fmt.Println("failed to read output file")
 	//	return nil, err
 	//}
-//
+	//
 	//log.Printf("task %s took %s (inner), %s (outer)\n", uuid, durationInner, time.Since(start))
-//
+	//
 	//return output, nil
 }
 
@@ -256,14 +256,13 @@ func readJson(src string) (interface{}, error) {
 	}
 
 	var output interface{}
-	
+
 	if err := json.Unmarshal(outputData, &output); err != nil {
 		return nil, err
 	}
 
 	return output, nil
 }
-
 
 func initializeDocker() error {
 	// check if container is already running first
@@ -312,7 +311,7 @@ func initializeDocker() error {
 		return err
 	}
 
-	cmd = exec.Command("docker", "run", "-d", "--name", DOCKER_CONTAINER_NAME, "-v", ledger.HomeDir + "/tmp:/data", DOCKER_IMAGE_NAME)
+	cmd = exec.Command("docker", "run", "-d", "--name", DOCKER_CONTAINER_NAME, "-v", ledger.HomeDir+"/tmp:/data", DOCKER_IMAGE_NAME)
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -351,20 +350,20 @@ func writeNodejsRunner(dst string) error {
 		"const outputFilePath = '/data/' + taskId + '/" + NODEJS_OUTPUT_NAME + "';",
 		"const handlerFilePath = '/data/' + taskId + '/" + NODEJS_HANDLER_NAME + "';",
 		"async function main() {",
-        "    try {",
-        "        const inputData = await fs.readFile(inputFilePath, 'utf-8');",
-        "        const input = JSON.parse(inputData);",
-    	"        const handler = require(handlerFilePath);",
-    	"        let output = handler(input);",
+		"    try {",
+		"        const inputData = await fs.readFile(inputFilePath, 'utf-8');",
+		"        const input = JSON.parse(inputData);",
+		"        const handler = require(handlerFilePath);",
+		"        let output = handler(input);",
 		"		 if (output instanceof Promise) {",
 		"            output = await output;",
 		"        }",
-    	"        await fs.writeFile(outputFilePath, JSON.stringify(output, null, 2));",
-    	"        console.log('Task completed successfully.');",
-  		"    } catch (error) {",
-    	"        console.error('Error:', error);",
-    	"        process.exit(1);",
-  		"    }",
+		"        await fs.writeFile(outputFilePath, JSON.stringify(output, null, 2));",
+		"        console.log('Task completed successfully.');",
+		"    } catch (error) {",
+		"        console.error('Error:', error);",
+		"        process.exit(1);",
+		"    }",
 		"}",
 		"main();",
 	}
@@ -378,7 +377,7 @@ func writeNodejsRunner(dst string) error {
 // the go process sends the task ID through the socket
 // the runner returns the JSON output
 func writeNodejsRunner2(dst string) error {
-	runnerLines := []string {
+	runnerLines := []string{
 		"const {promises: fs} = require('fs');",
 		"const path = require('path');",
 		"const net = require('net');",

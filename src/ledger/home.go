@@ -10,7 +10,7 @@ var HomeDir string = ""
 func SetHomeDir(path string) {
 	HomeDir = path
 
-	if (path == "") {
+	if path == "" {
 		log.Fatal("can't set HomeDir to empty string")
 	}
 

@@ -1,44 +1,44 @@
 package main
 
 import (
-    "fmt"
-    "log"
-    "os"
-    "ows/actions"
-    "ows/ledger"
-    "ows/resources"
+	"fmt"
+	"log"
+	"os"
+	"ows/actions"
+	"ows/ledger"
+	"ows/resources"
 )
 
 var _ActionsInitialized = actions.InitializeActions()
 
 func main() {
-    initializeHomeDir()
+	initializeHomeDir()
 
-    l, err := ledger.ReadLedger(true)
-    if err != nil {
-        log.Fatal(err)
-    }
+	l, err := ledger.ReadLedger(true)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    rm := resources.NewResourceManager()
+	rm := resources.NewResourceManager()
 
-    l.ApplyAll(rm)
+	l.ApplyAll(rm)
 
-    go ledger.ListenAndServeLedger(l, rm)
+	go ledger.ListenAndServeLedger(l, rm)
 
-    select {}
+	select {}
 }
 
 func initializeHomeDir() {
-    path, exists := os.LookupEnv("HOME")
+	path, exists := os.LookupEnv("HOME")
 
-    if exists {
-        path = path + "/.ows/node"
-    } else {
-        // assume that if HOME isn't set the node has root user rights
-        path = "/ows"
-    }
+	if exists {
+		path = path + "/.ows/node"
+	} else {
+		// assume that if HOME isn't set the node has root user rights
+		path = "/ows"
+	}
 
-    ledger.SetHomeDir(path)
+	ledger.SetHomeDir(path)
 
-    fmt.Println("Home dir: " + path)
+	fmt.Println("Home dir: " + path)
 }

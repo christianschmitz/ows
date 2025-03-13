@@ -37,7 +37,7 @@ func (h *GatewayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 			fmt.Fprintf(w, string(str))
 		} else {
-			http.Error(w, "invalid path", 404)	
+			http.Error(w, "invalid path", 404)
 		}
 	} else {
 		http.Error(w, "unsupported method", 404)

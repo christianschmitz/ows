@@ -2,7 +2,7 @@ package ledger
 
 import (
 	"errors"
-	"strconv"	
+	"strconv"
 )
 
 type userValidationConfig struct {
@@ -10,7 +10,7 @@ type userValidationConfig struct {
 
 	// each policy is indepedent and doesn't impact other policies in this list
 	// so
-	policies []string 
+	policies []string
 }
 
 type taskValidationConfig = bool
@@ -26,13 +26,13 @@ type gatewayValidationConfig struct {
 // implements ResourceManager interface
 // more strict than resources.ResourceManager
 type ValidationContext struct {
-	validateAssets bool
-	compute	map[string]NodeConfig
-	users map[string]userValidationConfig
-	tasks map[string]taskValidationConfig
+	validateAssets   bool
+	compute          map[string]NodeConfig
+	users            map[string]userValidationConfig
+	tasks            map[string]taskValidationConfig
 	policyStatements map[string]PolicyStatement
-	policies map[string]policyValidationConfig
-	gateways map[string]gatewayValidationConfig
+	policies         map[string]policyValidationConfig
+	gateways         map[string]gatewayValidationConfig
 }
 
 func newValidationContext(validateAssets bool, rootUsers []PubKey) *ValidationContext {
@@ -40,19 +40,19 @@ func newValidationContext(validateAssets bool, rootUsers []PubKey) *ValidationCo
 
 	for _, ru := range rootUsers {
 		users[StringifyPubKey(ru)] = userValidationConfig{
-			isRoot: true,
+			isRoot:   true,
 			policies: []string{},
 		}
 	}
 
 	return &ValidationContext{
-		validateAssets: validateAssets,
-		compute: map[string]NodeConfig{},
-		users: users,
-		tasks: map[string]taskValidationConfig{},
+		validateAssets:   validateAssets,
+		compute:          map[string]NodeConfig{},
+		users:            users,
+		tasks:            map[string]taskValidationConfig{},
 		policyStatements: map[string]PolicyStatement{},
-		policies: map[string]policyValidationConfig{},
-		gateways: map[string]gatewayValidationConfig{},
+		policies:         map[string]policyValidationConfig{},
+		gateways:         map[string]gatewayValidationConfig{},
 	}
 }
 
@@ -117,14 +117,14 @@ func (c *ValidationContext) AddTask(id string, handler string) error {
 		return errors.New("task resource already exists")
 	}
 
-	if (c.validateAssets) {
+	if c.validateAssets {
 		if ok := AssetExists(handler); !ok {
 			return errors.New("handler asset " + handler + " not found")
 		}
 	}
 
 	c.tasks[id] = true
-	
+
 	return nil
 }
 
@@ -148,7 +148,7 @@ func (c *ValidationContext) AddGateway(id string, port int) error {
 	}
 
 	for _, other := range c.gateways {
-		if (other.port == port) {
+		if other.port == port {
 			return errors.New("port " + strconv.Itoa(port) + " already used by other gateway")
 		}
 	}

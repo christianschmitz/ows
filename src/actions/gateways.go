@@ -1,8 +1,8 @@
 package actions
 
 import (
-	"ows/ledger"
 	"github.com/fxamacker/cbor/v2"
+	"ows/ledger"
 )
 
 type AddGateway struct {
@@ -28,7 +28,7 @@ func (a *AddGateway) GetCategory() string {
 	return "gateway"
 }
 
-var _AddGatewayRegistered = ledger.RegisterAction("gateway", "AddGateway", func (attr []byte) (ledger.Action, error) {
+var _AddGatewayRegistered = ledger.RegisterAction("gateway", "AddGateway", func(attr []byte) (ledger.Action, error) {
 	var a AddGateway
 	err := cbor.Unmarshal(attr, &a)
 	return &a, err
@@ -59,7 +59,7 @@ func (a *RemoveGateway) GetResources() []string {
 	return []string{a.Id}
 }
 
-var _RemoveGatewayRegistered = ledger.RegisterAction("gateway", "RemoveGateway", func (attr []byte) (ledger.Action, error) {
+var _RemoveGatewayRegistered = ledger.RegisterAction("gateway", "RemoveGateway", func(attr []byte) (ledger.Action, error) {
 	var a RemoveGateway
 	err := cbor.Unmarshal(attr, &a)
 	return &a, err
@@ -68,9 +68,9 @@ var _RemoveGatewayRegistered = ledger.RegisterAction("gateway", "RemoveGateway",
 type AddGatewayEndpoint struct {
 	BaseAction
 	GatewayId string `cbor:"0,keyasint"`
-	Method string `cbor:"1,keyasint"`
-	Path string `cbor:"2,keyasint"`
-	TaskId string `cbor:"3,keyasint"`
+	Method    string `cbor:"1,keyasint"`
+	Path      string `cbor:"2,keyasint"`
+	TaskId    string `cbor:"3,keyasint"`
 }
 
 func NewAddGatewayEndpoint(gatewayId string, method string, path string, taskId string) *AddGatewayEndpoint {
@@ -99,7 +99,7 @@ func (a *AddGatewayEndpoint) GetResources() []string {
 	return []string{a.GatewayId}
 }
 
-var _AddGatewayEndpointRegistered = ledger.RegisterAction("gateway", "AddGatewayEndpoint", func (attr []byte) (ledger.Action, error) {
+var _AddGatewayEndpointRegistered = ledger.RegisterAction("gateway", "AddGatewayEndpoint", func(attr []byte) (ledger.Action, error) {
 	var a AddGatewayEndpoint
 	err := cbor.Unmarshal(attr, &a)
 	return &a, err
@@ -122,6 +122,6 @@ func ListGateways(l *ledger.Ledger) map[string]GatewayConfig {
 			}
 		}
 	}
-	
+
 	return m
 }

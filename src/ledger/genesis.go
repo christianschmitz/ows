@@ -1,6 +1,6 @@
 package ledger
 
-import (	
+import (
 	"bytes"
 	"errors"
 	"os"
@@ -35,12 +35,12 @@ func LookupGenesisChangeSet() (*ChangeSet, error) {
 		if ok {
 			return defaultProfileChangeSet, nil
 		}
-		
+
 		singletonChangeSet, ok := useSingletonProjectGenesis()
 		if ok {
 			return singletonChangeSet, nil
 		}
-		
+
 		return nil, errors.New(GENESIS_ENV_VAR_NAME + " is not set")
 	}
 
@@ -69,7 +69,7 @@ func useSingletonProjectGenesis() (*ChangeSet, bool) {
 
 	for _, file := range files {
 		if file.IsDir() && strings.HasPrefix(file.Name(), PROJECT_HASH_PREFIX) {
-			filteredPaths = append(filteredPaths, dir + file.Name())
+			filteredPaths = append(filteredPaths, dir+file.Name())
 		}
 	}
 

@@ -3,9 +3,9 @@ package ledger
 import (
 	"encoding/base64"
 	"errors"
-	"log"
-	"golang.org/x/crypto/blake2b"
 	"github.com/btcsuite/btcutil/bech32"
+	"golang.org/x/crypto/blake2b"
+	"log"
 )
 
 func StringifyHumanReadableBytes(prefix string, bs []byte) string {
@@ -15,7 +15,7 @@ func StringifyHumanReadableBytes(prefix string, bs []byte) string {
 	}
 
 	str, err := bech32.Encode(prefix, conv)
-	if err != nil {		
+	if err != nil {
 		log.Fatal(err)
 	}
 

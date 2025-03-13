@@ -2,8 +2,8 @@ package actions
 
 import (
 	"errors"
-	"ows/ledger"
 	"github.com/fxamacker/cbor/v2"
+	"ows/ledger"
 )
 
 type RemoveNode struct {
@@ -31,7 +31,7 @@ func (c *RemoveNode) GetResources() []string {
 	return []string{c.Id}
 }
 
-var _RemoveNodeRegistered = ledger.RegisterAction("compute", "RemoveNode", func (attr []byte) (ledger.Action, error) {
+var _RemoveNodeRegistered = ledger.RegisterAction("compute", "RemoveNode", func(attr []byte) (ledger.Action, error) {
 	var c RemoveNode
 	err := cbor.Unmarshal(attr, &c)
 	return &c, err

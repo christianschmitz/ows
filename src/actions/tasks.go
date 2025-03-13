@@ -1,8 +1,8 @@
 package actions
 
 import (
-	"ows/ledger"
 	"github.com/fxamacker/cbor/v2"
+	"ows/ledger"
 )
 
 type AddTask struct {
@@ -29,7 +29,7 @@ func (a *AddTask) GetCategory() string {
 	return "tasks"
 }
 
-var _AddTaskRegistered = ledger.RegisterAction("tasks", "AddTask", func (attr []byte) (ledger.Action, error) {
+var _AddTaskRegistered = ledger.RegisterAction("tasks", "AddTask", func(attr []byte) (ledger.Action, error) {
 	var action AddTask
 	err := cbor.Unmarshal(attr, &action)
 	return &action, err
@@ -56,7 +56,7 @@ func (a *RemoveTask) GetCategory() string {
 	return "tasks"
 }
 
-var _RemoveTaskRegisterd = ledger.RegisterAction("tasks", "RemoveTask", func (attr []byte) (ledger.Action, error) {
+var _RemoveTaskRegisterd = ledger.RegisterAction("tasks", "RemoveTask", func(attr []byte) (ledger.Action, error) {
 	var action RemoveTask
 	err := cbor.Unmarshal(attr, &action)
 	return &action, err

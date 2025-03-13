@@ -28,7 +28,7 @@ func (c *LedgerClient) Sync() error {
 		return err
 	}
 
-	if (ledger.IsSameChangeSetHash(c.Ledger.Head, head)) {
+	if ledger.IsSameChangeSetHash(c.Ledger.Head, head) {
 		return nil
 	}
 
@@ -49,7 +49,7 @@ func (c *LedgerClient) Sync() error {
 
 	// download [p+1:] from remote ledger
 	if p+1 < len(remoteChangeSetHashes.Hashes) {
-		for i := p+1; i < len(remoteChangeSetHashes.Hashes); i++ {
+		for i := p + 1; i < len(remoteChangeSetHashes.Hashes); i++ {
 			h := remoteChangeSetHashes.Hashes[i]
 
 			cs, err := node.GetChangeSet(h)

@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/spf13/cobra"
 	"log"
 	"os"
-	"github.com/spf13/cobra"
 )
 
 func uploadAssets(cmd *cobra.Command, args []string) {
@@ -20,7 +20,7 @@ func uploadAssets(cmd *cobra.Command, args []string) {
 			log.Fatal(err)
 		}
 
-		id, err := c.UploadFile(bs)  
+		id, err := c.UploadFile(bs)
 		if err != nil {
 			log.Fatal(err)
 		}

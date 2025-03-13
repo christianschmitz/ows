@@ -1,7 +1,6 @@
 package ledger
 
-import (
-)
+import ()
 
 // also used by GenesisSet
 type ChangeSetCbor struct {

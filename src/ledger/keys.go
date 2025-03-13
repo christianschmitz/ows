@@ -5,8 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-	"os"
 	"github.com/fxamacker/cbor/v2"
+	"os"
 )
 
 type PrivateKey = [64]byte
@@ -15,7 +15,7 @@ type PubKey = [32]byte
 
 type KeyPair struct {
 	Private PrivateKey `cbor:"0,keyasint"`
-	Public PubKey `cbor:"1,keyasint"`
+	Public  PubKey     `cbor:"1,keyasint"`
 }
 
 func StringifyPubKey(key PubKey) string {
@@ -75,7 +75,7 @@ func ReadKeyPair(path string, generateNewIfNotExists bool) (*KeyPair, error) {
 		return DecodeKeyPair(bytes)
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return nil, err
-	} else if (generateNewIfNotExists) {
+	} else if generateNewIfNotExists {
 		pair, err := GenerateKeyPair()
 
 		if err != nil {
@@ -102,7 +102,7 @@ func (p *KeyPair) Sign(message []byte) (Signature, error) {
 	rawSigBytes := ed25519.Sign(p.Private[:], message)
 
 	if len(rawSigBytes) != 64 {
-		return Signature{}, errors.New("ed25519 signature not exactly 64 bytes long")		
+		return Signature{}, errors.New("ed25519 signature not exactly 64 bytes long")
 	}
 
 	sigBytes := [64]byte{}
@@ -132,4 +132,3 @@ func (p *KeyPair) Write(path string) error {
 
 	return os.WriteFile(path, bytes, 0644)
 }
-

@@ -5,14 +5,14 @@ import (
 	"log"
 )
 
-type ResourceIdGenerator = func (prefix string) string
+type ResourceIdGenerator = func(prefix string) string
 
 func GenerateGlobalResourceId() string {
 	return "*"
 }
 
 func GenerateResourceId(prefix string, parentId []byte, index int) string {
-	if (index < 0) {
+	if index < 0 {
 		log.Fatal("invalid negative index in GenerateResourceId")
 	}
 
@@ -21,7 +21,7 @@ func GenerateResourceId(prefix string, parentId []byte, index int) string {
 	// custom little endian encoding
 	for index >= 256 {
 		indexBytes = append(indexBytes, byte(index%256))
-		index = index/256
+		index = index / 256
 	}
 
 	indexBytes = append(indexBytes, byte(index))

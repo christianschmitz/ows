@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/fxamacker/cbor/v2"
 	"log"
 	"os"
-	"github.com/fxamacker/cbor/v2"
 )
 
 type Ledger struct {
@@ -42,8 +42,8 @@ func (l *Ledger) syncHead() {
 // creates an unsigned change set
 func (l *Ledger) NewChangeSet(actions ...Action) *ChangeSet {
 	cs := &ChangeSet{
-		Parent: l.Head,
-		Actions: actions,
+		Parent:     l.Head,
+		Actions:    actions,
 		Signatures: []Signature{},
 	}
 
@@ -55,7 +55,7 @@ func makeLedgerPath(projectPath string) string {
 }
 
 func getLedgerPath(genesis *ChangeSet) string {
-	h := StringifyProjectHash(genesis.Hash())	
+	h := StringifyProjectHash(genesis.Hash())
 
 	projectPath := HomeDir + "/" + h
 
@@ -101,7 +101,7 @@ func readLedger(ledgerPath string) (*Ledger, bool) {
 		dat, err := os.ReadFile(ledgerPath)
 
 		if err == nil {
-			l, err := DecodeLedger(dat)	
+			l, err := DecodeLedger(dat)
 			if err == nil {
 				return l, true
 			} else {
@@ -122,7 +122,7 @@ func (l *Ledger) ApplyAll(m ResourceManager) {
 }
 
 func (l *Ledger) KeepChangeSets(until int) {
-	l.Changes = l.Changes[0:until+1]
+	l.Changes = l.Changes[0 : until+1]
 
 	l.syncHead()
 }
@@ -154,7 +154,7 @@ func (l *Ledger) GetChangeSet(h ChangeSetHash) (*ChangeSet, bool) {
 				return &(l.Changes[i-1]), true
 			}
 		} else if i > 0 {
-			if (IsSameChangeSetHash(h, l.Changes[i].Hash())) {
+			if IsSameChangeSetHash(h, l.Changes[i].Hash()) {
 				return &(l.Changes[i]), true
 			}
 		}

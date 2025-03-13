@@ -21,15 +21,15 @@ type syncHandler struct {
 }
 
 func ListenAndServeLedger(l *Ledger, rm ResourceManager) {
-    s := &http.Server{
-        Addr:           ":" + strconv.Itoa(SYNC_PORT),
-        Handler:        &syncHandler{l, rm},
-        ReadTimeout:    10 * time.Second,
-        WriteTimeout:   10 * time.Second,
-        MaxHeaderBytes: 1 << 20,
-    }
+	s := &http.Server{
+		Addr:           ":" + strconv.Itoa(SYNC_PORT),
+		Handler:        &syncHandler{l, rm},
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+	}
 
-    log.Fatal(s.ListenAndServe())
+	log.Fatal(s.ListenAndServe())
 }
 
 func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +44,7 @@ func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case "/assets":
 			assets, err := h.getLocalAssets()
 			if err != nil {
-				http.Error(w, "Couldn't get assets: " + err.Error(), 500)
+				http.Error(w, "Couldn't get assets: "+err.Error(), 500)
 				return
 			}
 
@@ -64,8 +64,8 @@ func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 			cs, ok := h.ledger.GetChangeSet(hash)
 
-			if (!ok) {
-				http.Error(w, "unhandled sync GET path " + r.URL.Path, 404)
+			if !ok {
+				http.Error(w, "unhandled sync GET path "+r.URL.Path, 404)
 				return
 			}
 
@@ -92,24 +92,24 @@ func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 			cs, err := DecodeChangeSet(body)
 			if err != nil {
-				http.Error(w, "Invalid change set: " + err.Error(), 400)
+				http.Error(w, "Invalid change set: "+err.Error(), 400)
 				return
 			}
 
 			if err := h.ledger.AppendChangeSet(cs, true); err != nil {
-				http.Error(w, "Invalid change set: " + err.Error(), 400)
+				http.Error(w, "Invalid change set: "+err.Error(), 400)
 				return
 			}
 
 			if err := cs.Apply(h.resourceManager); err != nil {
-				http.Error(w, "Invalid change set: " + err.Error(), 400)
+				http.Error(w, "Invalid change set: "+err.Error(), 400)
 				return
 			}
 
 			h.ledger.Write()
 			fmt.Fprintf(w, "")
 		default:
-			http.Error(w, "unhandled sync POST path " + r.URL.Path, 404)
+			http.Error(w, "unhandled sync POST path "+r.URL.Path, 404)
 		}
 	case "PUT":
 		switch r.URL.Path {
@@ -134,7 +134,7 @@ func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						return
 					}
 				} else {
-					http.Error(w, path + " error", 500)
+					http.Error(w, path+" error", 500)
 					return
 				}
 			}
@@ -142,7 +142,7 @@ func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "%s", id)
 		}
 	default:
-		http.Error(w, "unsupported sync http method " + r.Method, 404)
+		http.Error(w, "unsupported sync http method "+r.Method, 404)
 	}
 }
 
@@ -163,7 +163,6 @@ func (h *syncHandler) getLocalAssets() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
 
 	for _, f := range files {
 		if strings.HasPrefix(f.Name(), "asset") {

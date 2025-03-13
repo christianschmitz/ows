@@ -6,8 +6,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"strconv"
 	"ows/ledger"
+	"strconv"
 )
 
 type NodeSyncClient struct {
@@ -65,7 +65,7 @@ func (c *NodeSyncClient) GetChangeSetHashes() (*ledger.ChangeSetHashes, error) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err	
+		return nil, err
 	}
 
 	rawHashes := []string{}
@@ -79,7 +79,7 @@ func (c *NodeSyncClient) GetChangeSetHashes() (*ledger.ChangeSetHashes, error) {
 	hashes := make([]ledger.ChangeSetHash, len(rawHashes))
 
 	for i, rh := range rawHashes {
-		if (i == 0) {
+		if i == 0 {
 			h, err := ledger.ParseProjectHash(rh)
 			if err != nil {
 				return nil, err
@@ -144,7 +144,7 @@ func (c *NodeSyncClient) UploadFile(bs []byte) (string, error) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err	
+		return "", err
 	}
 
 	return string(body), nil
@@ -154,13 +154,13 @@ func (c *NodeSyncClient) GetAssets() ([]string, error) {
 	resp, err := http.Get(c.url("assets"))
 	if err != nil {
 		return []string{}, err
-	}	
+	}
 
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err	
+		return nil, err
 	}
 
 	if resp.StatusCode != 200 {
