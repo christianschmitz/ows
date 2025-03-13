@@ -15,6 +15,6 @@ func (a *BaseAction) GetRemovedNodes() []string {
 	return []string{}
 }
 
-func (a *BaseAction) GetResources() []ledger.ResourceId {
-	return []ledger.ResourceId{ledger.GenerateGlobalResourceId()}
+func (a *BaseAction) GetResources() []string {
+	return []string{ledger.GenerateGlobalResourceId()}
 }

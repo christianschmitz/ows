@@ -33,7 +33,7 @@ func (p *Policy) Merge(other *Policy) *Policy {
 
 // everything in allow - everything in deny
 // this means that something that has been denied can't be overridden with allow
-func (p *Policy) Allows(resource ResourceId, category string, action string) bool {
+func (p *Policy) Allows(resource string, category string, action string) bool {
 	isAllowed := false
 
 	for _, s := range p.Statements {
@@ -49,7 +49,7 @@ func (p *Policy) Allows(resource ResourceId, category string, action string) boo
 	return isAllowed
 }
 
-func (p *Policy) AllowsAll(resources []ResourceId, category string, action string) bool {
+func (p *Policy) AllowsAll(resources []string, category string, action string) bool {
 	if len(resources) == 0 {
 		fmt.Println("resources list can't be empty in Policy.AllowsAll(), disallowing")
 		return false

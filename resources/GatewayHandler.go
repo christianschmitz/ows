@@ -1,9 +1,9 @@
 package resources
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"ows/ledger"
 )
 
 type GatewayHandler struct {
@@ -15,20 +15,27 @@ type GatewayHandler struct {
 
 // TODO: timeout details
 type EndpointConfig struct {
-	Task ledger.ResourceId // task to run
+	TaskId string // task to run
 }
 
 func (h *GatewayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if endpoints, ok := h.Endpoints[r.Method]; ok {
 		if endpoint, ok := endpoints[r.URL.Path]; ok {
 			// now run the task
-			str, err := h.Tasks.Run(endpoint.Task)
+			resp, err := h.Tasks.Run(endpoint.TaskId, "hello world")
 			if err != nil {
+				fmt.Println(err)
 				http.Error(w, "failed to run task", 500)
 				return
 			}
 
-			fmt.Fprintf(w, str)
+			str, err := json.Marshal(resp)
+			if err != nil {
+				http.Error(w, "bad response", 500)
+				return
+			}
+
+			fmt.Fprintf(w, string(str))
 		} else {
 			http.Error(w, "invalid path", 404)	
 		}

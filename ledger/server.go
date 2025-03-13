@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -36,8 +38,18 @@ func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/":
 			// return a list of all the heads
-			w.Header()["Content-Type"] = []string{"application/json"}
+			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprintf(w, "%s", h.getLedgerChangeSetHashes())
+			return
+		case "/assets":
+			assets, err := h.getLocalAssets()
+			if err != nil {
+				http.Error(w, "Couldn't get assets: " + err.Error(), 500)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintf(w, "%s", assets)
 			return
 		case "/head":
 			w.Header()["Content-Type"] = []string{"text/plain"}
@@ -80,17 +92,17 @@ func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 			cs, err := DecodeChangeSet(body)
 			if err != nil {
-				http.Error(w, "Invalid change set", 400)
+				http.Error(w, "Invalid change set: " + err.Error(), 400)
 				return
 			}
 
 			if err := h.ledger.AppendChangeSet(cs, true); err != nil {
-				http.Error(w, "Invalid change set", 400)
+				http.Error(w, "Invalid change set: " + err.Error(), 400)
 				return
 			}
 
 			if err := cs.Apply(h.resourceManager); err != nil {
-				http.Error(w, "Invalid change set", 400)
+				http.Error(w, "Invalid change set: " + err.Error(), 400)
 				return
 			}
 
@@ -111,15 +123,9 @@ func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 
 			id := GenerateAssetId(body)
+			assetsDir := GetAssetsDir()
 
-			assetsDir := HomeDir + "/assets"
-
-			if err := os.MkdirAll(assetsDir, os.ModePerm); err != nil {
-				http.Error(w, "Unable to make assets dir", 500)
-				return
-			}
-
-			path := assetsDir + "/" + StringifyAssetId(id)
+			path := assetsDir + "/" + id
 
 			if _, err := os.Stat(path); err != nil {
 				if errors.Is(err, os.ErrNotExist) {
@@ -133,7 +139,7 @@ func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			fmt.Fprintf(w, "%s", StringifyAssetId(id))
+			fmt.Fprintf(w, "%s", id)
 		}
 	default:
 		http.Error(w, "unsupported sync http method " + r.Method, 404)
@@ -146,4 +152,29 @@ func (h *syncHandler) getLedgerHeadString() string {
 
 func (h *syncHandler) getLedgerChangeSetHashes() string {
 	return h.ledger.GetChangeSetHashes().Stringify()
+}
+
+func (h *syncHandler) getLocalAssets() (string, error) {
+	assets := []string{}
+
+	assetsDir := GetAssetsDir()
+	files, err := os.ReadDir(assetsDir)
+
+	if err != nil {
+		return "", err
+	}
+	
+
+	for _, f := range files {
+		if strings.HasPrefix(f.Name(), "asset") {
+			assets = append(assets, f.Name())
+		}
+	}
+
+	res, err := json.Marshal(assets)
+	if err != nil {
+		return "", err
+	}
+
+	return string(res), nil
 }

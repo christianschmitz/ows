@@ -70,7 +70,7 @@ func (c *LedgerClient) Sync() error {
 
 // returns the node address
 func (c *LedgerClient) PickNode() *NodeSyncClient {
-	m := actions.GetNodeAddresses(c.Ledger)
+	m := actions.ListNodes(c.Ledger)
 
 	for _, a := range m {
 		return NewNodeSyncClient(a)
@@ -93,8 +93,14 @@ func (c *LedgerClient) PublishChangeSet(cs *ledger.ChangeSet) error {
 	return node.PublishChangeSet(cs)
 }
 
-func (c *LedgerClient) UploadFile(bs []byte) (ledger.AssetId, error) {
+func (c *LedgerClient) UploadFile(bs []byte) (string, error) {
 	node := c.PickNode()
 
 	return node.UploadFile(bs)
+}
+
+func (c *LedgerClient) GetAssets() ([]string, error) {
+	node := c.PickNode()
+
+	return node.GetAssets()
 }

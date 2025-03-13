@@ -37,6 +37,17 @@ func (l *Ledger) syncHead() {
 	l.Head = l.Changes[len(l.Changes)-1].Hash()
 }
 
+// creates an unsigned change set
+func (l *Ledger) NewChangeSet(actions ...Action) *ChangeSet {
+	cs := &ChangeSet{
+		Parent: l.Head,
+		Actions: actions,
+		Signatures: []Signature{},
+	}
+
+	return cs
+}
+
 func makeLedgerPath(projectPath string) string {
 	return projectPath + "/ledger"
 }

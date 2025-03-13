@@ -1,7 +1,6 @@
 package resources
 
 import (
-	"ows/ledger"
 )
 
 type ResourceManager struct {
@@ -19,18 +18,26 @@ func NewResourceManager() *ResourceManager {
 	}
 }
 
-func (m *ResourceManager) AddCompute(id ledger.ResourceId, addr string) error {
+func (m *ResourceManager) AddNode(id string, addr string) error {
 	return m.Compute.Add(id, addr)
 }
 
-func (m *ResourceManager) AddGateway(id ledger.ResourceId, port int) error {
+func (m *ResourceManager) AddGateway(id string, port int) error {
 	return m.Gateways.Add(id, port)
 }
 
-func (m *ResourceManager) AddGatewayEndpoint(id ledger.ResourceId, method string, relPath string, task ledger.ResourceId) error {
-	return m.Gateways.AddEndpoint(id, method, relPath, task)
+func (m *ResourceManager) RemoveGateway(id string) error {
+	return m.Gateways.Remove(id)
 }
 
-func (m *ResourceManager) AddTask(id ledger.ResourceId, handler ledger.AssetId) error {
+func (m *ResourceManager) AddGatewayEndpoint(gatewayId string, method string, relPath string, taskId string) error {
+	return m.Gateways.AddEndpoint(gatewayId, method, relPath, taskId)
+}
+
+func (m *ResourceManager) AddTask(id string, handler string) error {
 	return m.Tasks.Add(id, handler)
+}
+
+func (m *ResourceManager) RemoveTask(id string) error {
+	return m.Tasks.Remove(id)
 }

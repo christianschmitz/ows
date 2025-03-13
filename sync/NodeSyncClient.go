@@ -111,34 +111,68 @@ func (c *NodeSyncClient) PublishChangeSet(cs *ledger.ChangeSet) error {
 	}
 
 	if resp.StatusCode != 200 {
-		return errors.New("request failed: " + resp.Status)		
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return errors.New("request failed: " + resp.Status)
+		}
+
+		return errors.New(string(body))
 	}
 
 	return nil
 }
 
-func (c *NodeSyncClient) UploadFile(bs []byte) (ledger.AssetId, error) {
+func (c *NodeSyncClient) UploadFile(bs []byte) (string, error) {
 	req, err := http.NewRequest("PUT", c.url("assets"), bytes.NewBuffer(bs))
 	if err != nil {
-		return [32]byte{}, err
+		return "", err
 	}
 
 	req.Header.Set("Content-Type", "application/octet-stream")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return [32]byte{}, err
+		return "", err
 	}
 
 	if resp.StatusCode != 200 {
-		return [32]byte{}, errors.New("Upload error " + resp.Status)
+		return "", errors.New("Upload error " + resp.Status)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return [32]byte{}, err	
+		return "", err	
 	}
 
-	return ledger.ParseAssetId(string(body))
+	return string(body), nil
+}
+
+func (c *NodeSyncClient) GetAssets() ([]string, error) {
+	resp, err := http.Get(c.url("assets"))
+	if err != nil {
+		return []string{}, err
+	}	
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err	
+	}
+
+	if resp.StatusCode != 200 {
+		return nil, errors.New(string(body))
+	}
+
+	assets := []string{}
+
+	err = json.Unmarshal(body, &assets)
+	if err != nil {
+		return nil, err
+	}
+
+	return assets, nil
 }

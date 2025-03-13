@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"log"
 	"github.com/fxamacker/cbor/v2"
-	"golang.org/x/crypto/sha3"
 )
 
 type ChangeSet struct {
@@ -27,8 +26,8 @@ func DecodeChangeSet(bytes []byte) (*ChangeSet, error) {
 
 func (c *ChangeSet) Apply(m ResourceManager) error {
 	for i, a := range c.Actions {
-		err := a.Apply(m, func () ResourceId {
-			return GenerateResourceId(c.Parent, i)
+		err := a.Apply(m, func (prefix string) string {
+			return GenerateResourceId(prefix, c.Parent, i)
 		})
 
 		if err != nil {
@@ -63,7 +62,7 @@ func (c *ChangeSet) Hash() ChangeSetHash {
 		log.Fatal(err)
 	}
 
-	hash := sha3.Sum256(bytes)
+	hash := DigestCompact(bytes)
 
 	return hash[:]
 }
@@ -85,7 +84,7 @@ func (c *ChangeSet) convertToChangeSetCbor(forSigning bool) ChangeSetCbor {
 	return ChangeSetCbor{c.Parent[:], actions, signatures}
 }
 
-func (c *ChangeSet) CollectSignatories() []PubKey {
+func (c *ChangeSet) CollectSigners() []PubKey {
 	signatures := c.Signatures[:]
 	users := []PubKey{}
 

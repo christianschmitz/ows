@@ -6,8 +6,6 @@ import (
 	"strconv"	
 )
 
-type computeValidationConfig = bool
-
 type userValidationConfig struct {
 	isRoot bool
 
@@ -30,7 +28,7 @@ type gatewayValidationConfig struct {
 // more strict than resources.ResourceManager
 type ValidationContext struct {
 	validateAssets bool
-	compute	map[string]computeValidationConfig
+	compute	map[string]NodeConfig
 	users map[string]userValidationConfig
 	tasks map[string]taskValidationConfig
 	policyStatements map[string]PolicyStatement
@@ -50,7 +48,7 @@ func newValidationContext(validateAssets bool, rootUsers []PubKey) *ValidationCo
 
 	return &ValidationContext{
 		validateAssets: validateAssets,
-		compute: map[string]computeValidationConfig{},
+		compute: map[string]NodeConfig{},
 		users: users,
 		tasks: map[string]taskValidationConfig{},
 		policyStatements: map[string]PolicyStatement{},
@@ -73,7 +71,7 @@ func (l *Ledger) ValidateAll(validateAssets bool) error {
 		}
 	}
 
-	rootUsers := l.Changes[0].CollectSignatories()
+	rootUsers := l.Changes[0].CollectSigners()
 
 	// create validation context
 	context := newValidationContext(validateAssets, rootUsers)
@@ -89,10 +87,10 @@ func (l *Ledger) ValidateAll(validateAssets bool) error {
 		}
 
 		// first validate that the signatures correspond
-		signatories := []PubKey{}
+		signers := []PubKey{}
 
 		if i == 0 {
-			signatories = rootUsers
+			signers = rootUsers
 		} else {
 			for _, s := range c.Signatures {
 				cbs, err := c.Encode(true)
@@ -105,11 +103,11 @@ func (l *Ledger) ValidateAll(validateAssets bool) error {
 				}
 			}
 
-			signatories = c.CollectSignatories()
+			signers = c.CollectSigners()
 		}
 
-		// check that all the actions can actually be taken by the signatories
-		userPolicies, err := context.getSignatoryPermissions(signatories)
+		// check that all the actions can actually be taken by the signers
+		userPolicies, err := context.getSignatoryPermissions(signers)
 		if err != nil {
 			return err
 		}
@@ -123,7 +121,7 @@ func (l *Ledger) ValidateAll(validateAssets bool) error {
 			}
 
 			if !allowed {
-				return errors.New("merged policy of all signatories doesn't allow " + a.GetCategory() + ":" + a.GetName())
+				return errors.New("merged policy of all signers doesn't allow " + a.GetCategory() + ":" + a.GetName())
 			}
 		}
 
@@ -155,10 +153,10 @@ func (c *ValidationContext) getPolicy(id string) (*Policy, error) {
 	}
 }
 
-func (c *ValidationContext) getSignatoryPermissions(signatories []PubKey) ([]*Policy, error) {
+func (c *ValidationContext) getSignatoryPermissions(signers []PubKey) ([]*Policy, error) {
 	policies := []*Policy{}
 
-	for _, pk := range signatories {
+	for _, pk := range signers {
 		if conf, ok := c.users[StringifyPubKey(pk)]; ok {
 			if conf.isRoot {
 				// root users can never be locked out by Deny statements, so we immediately return root policy
@@ -179,39 +177,48 @@ func (c *ValidationContext) getSignatoryPermissions(signatories []PubKey) ([]*Po
 	return policies, nil
 }
 
-func (c *ValidationContext) AddCompute(id ResourceId, _addr string) error {
-	sId := StringifyResourceId(id)
-	if _, ok := c.compute[sId]; ok {
+func (c *ValidationContext) AddNode(id string, addr string) error {
+	if _, ok := c.compute[id]; ok {
 		return errors.New("compute resource already exists")
 	}
 
-	c.compute[sId] = true
+	c.compute[id] = NodeConfig{
+		9001,
+		9002,
+		addr,
+	}
 
 	return nil
 }
 
-func (c *ValidationContext) AddTask(id ResourceId, handler AssetId) error {
-	sId := StringifyResourceId(id)
-
-	if _, ok := c.tasks[sId]; ok {
+func (c *ValidationContext) AddTask(id string, handler string) error {
+	if _, ok := c.tasks[id]; ok {
 		return errors.New("task resource already exists")
 	}
 
 	if (c.validateAssets) {
 		if ok := AssetExists(handler); !ok {
-			return errors.New("handler asset " + StringifyAssetId(handler) + " not found")
+			return errors.New("handler asset " + handler + " not found")
 		}
 	}
 
-	c.tasks[sId] = true
+	c.tasks[id] = true
 	
 	return nil
 }
 
-func (c *ValidationContext) AddGateway(id ResourceId, port int) error {
-	sId := StringifyResourceId(id)
+func (c *ValidationContext) RemoveTask(id string) error {
+	if _, ok := c.tasks[id]; !ok {
+		return errors.New("task not found")
+	}
 
-	if _, ok := c.gateways[sId]; ok {
+	delete(c.tasks, id)
+
+	return nil
+}
+
+func (c *ValidationContext) AddGateway(id string, port int) error {
+	if _, ok := c.gateways[id]; ok {
 		return errors.New("gateway resource already exists")
 	}
 
@@ -225,23 +232,39 @@ func (c *ValidationContext) AddGateway(id ResourceId, port int) error {
 		}
 	}
 
-	c.gateways[sId] = gatewayValidationConfig{port}
+	c.gateways[id] = gatewayValidationConfig{port}
 
 	return nil
 }
 
-func (c *ValidationContext) AddGatewayEndpoint(id ResourceId, method string, endpoint string, task ResourceId) error {
-	sId := StringifyResourceId(id)
-
-	if _, ok := c.gateways[sId]; !ok {
-		return errors.New("gateway " + sId + " not found")
+func (c *ValidationContext) RemoveGateway(id string) error {
+	if _, ok := c.gateways[id]; !ok {
+		return errors.New("gateway doesn't exist")
 	}
 
-	if _, ok := c.tasks[StringifyResourceId(task)]; !ok {
+	delete(c.gateways, id)
+
+	return nil
+}
+
+func (c *ValidationContext) AddGatewayEndpoint(id string, method string, endpoint string, task string) error {
+	if _, ok := c.gateways[id]; !ok {
+		return errors.New("gateway " + id + " not found")
+	}
+
+	if _, ok := c.tasks[task]; !ok {
 		return errors.New("endpoint task not found")
 	}
 
 	// TODO: check that endpoints aren't duplicated
 
 	return nil
+}
+
+func IsValidPort(port int) bool {
+	if port <= 1024 || port == 1027 || port == 49151 || port > 65535 {
+		return false
+	} else {
+		return true
+	}
 }

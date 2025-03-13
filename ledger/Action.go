@@ -14,7 +14,7 @@ type Action interface {
 	// valid categories are: compute, permissions
 	GetCategory() string
 	GetName() string
-	GetResources() []ResourceId
+	GetResources() []string
 	GetAddedNodes() []string
 	GetRemovedNodes() []string
 

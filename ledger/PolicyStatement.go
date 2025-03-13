@@ -18,7 +18,7 @@ func GenerateRootPolicyStatement() PolicyStatement {
 	}
 }
 
-func (s *PolicyStatement) Allows(resource ResourceId, category string, action string) bool {
+func (s *PolicyStatement) Allows(resource string, category string, action string) bool {
 	if (s.Effect == "Allow") {
 		return s.matches(resource, category, action)
 	} else {
@@ -26,7 +26,7 @@ func (s *PolicyStatement) Allows(resource ResourceId, category string, action st
 	}
 }
 
-func (s *PolicyStatement) Denies(resource ResourceId, category string, action string) bool {
+func (s *PolicyStatement) Denies(resource string, category string, action string) bool {
 	if (s.Effect == "Deny") {
 		return s.matches(resource, category, action)
 	} else {
@@ -34,16 +34,15 @@ func (s *PolicyStatement) Denies(resource ResourceId, category string, action st
 	}
 }
 
-func (s *PolicyStatement) matches(resource ResourceId, category string, action string) bool {
+func (s *PolicyStatement) matches(resource string, category string, action string) bool {
 	return s.matchesResource(resource) && s.matchesCategory(category) && s.matchesAction(action)
 }
 
-func (s *PolicyStatement) matchesResource(resource ResourceId) bool {
-	rId := StringifyResourceId(resource)
+func (s *PolicyStatement) matchesResource(resourceId string) bool {
 	for _, r := range s.Resources {
 		if (r == "*") {
 			return true
-		} else if r == rId {
+		} else if r == resourceId {
 			return true
 		}
 	}

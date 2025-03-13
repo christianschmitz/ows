@@ -3,26 +3,15 @@ package ledger
 import (
 	"errors"
 	"log"
-	"golang.org/x/crypto/sha3"
 )
 
-type ResourceId = [32]byte
+type ResourceIdGenerator = func (prefix string) string
 
-type ResourceIdGenerator = func () ResourceId
-
-const RESOURCE_ID_PREFIX = "resource"
-
-func GenerateGlobalResourceId() ResourceId {
-	globalResourceId := [32]byte{}
-
-	for i, _ := range globalResourceId {
-		globalResourceId[i] = 0
-	}
-
-	return globalResourceId
+func GenerateGlobalResourceId() string {
+	return "*"
 }
 
-func GenerateResourceId(parentId []byte, index int) ResourceId {
+func GenerateResourceId(prefix string, parentId []byte, index int) string {
 	if (index < 0) {
 		log.Fatal("invalid negative index in GenerateResourceId")
 	}
@@ -37,28 +26,20 @@ func GenerateResourceId(parentId []byte, index int) ResourceId {
 
 	indexBytes = append(indexBytes, byte(index))
 
-	return sha3.Sum256(append(parentId, indexBytes...))
+	resourceIdBytes := DigestCompact(append(parentId, indexBytes...))
+
+	return StringifyHumanReadableBytes(prefix, resourceIdBytes[:])
 }
 
-func StringifyResourceId(id ResourceId) string {
-	return StringifyHumanReadableBytes(RESOURCE_ID_PREFIX, id[:])
-}
-
-func ParseResourceId(str string) (ResourceId, error) {
-	bs, err := ParseHumanReadableBytes(str, RESOURCE_ID_PREFIX)
+func ValidateResourceId(id string, expectedPrefix string) error {
+	bs, err := ParseHumanReadableBytes(id, expectedPrefix)
 	if err != nil {
-		return [32]byte{}, err
+		return err
 	}
 
-	if len(bs) != 32 {
-		return [32]byte{}, errors.New("unexpected number of resourec id bytes")
+	if StringifyHumanReadableBytes(expectedPrefix, bs) != id {
+		return errors.New("bech32 roundtrip error")
 	}
 
-	rId := [32]byte{}
-
-	for i, b := range bs {
-		rId[i] = b
-	}
-
-	return rId, nil
+	return nil
 }

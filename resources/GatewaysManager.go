@@ -4,15 +4,8 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"time"
-	"ows/ledger"
+	"time"	
 )
-
-type Gateway struct {
-	Port int
-	Handler *GatewayHandler
-	Server *http.Server
-}
 
 type GatewaysManager struct {
 	Tasks *TasksManager
@@ -26,9 +19,7 @@ func NewGatewaysManager(tm *TasksManager) *GatewaysManager {
 	}
 }
 
-func (m *GatewaysManager) Add(id ledger.ResourceId, port int) error {
-	sId := ledger.StringifyResourceId(id)
-
+func (m *GatewaysManager) Add(id string, port int) error {
 	h := &GatewayHandler{
 		m.Tasks,
 		map[string]map[string]EndpointConfig{},
@@ -42,11 +33,11 @@ func (m *GatewaysManager) Add(id ledger.ResourceId, port int) error {
 		MaxHeaderBytes: 1 << 20,
 	}
 
-	if _, ok := m.Gateways[sId]; ok {
+	if _, ok := m.Gateways[id]; ok {
 		return errors.New("gateway already exists")
 	}
 
-	m.Gateways[sId] = &Gateway{
+	m.Gateways[id] = &Gateway{
 		port,
 		h,
 		s,
@@ -57,8 +48,24 @@ func (m *GatewaysManager) Add(id ledger.ResourceId, port int) error {
 	return nil
 }
 
-func (m *GatewaysManager) AddEndpoint(gatewayId ledger.ResourceId, method string, relPath string, task ledger.ResourceId) error {
-	g, ok := m.Gateways[ledger.StringifyResourceId(gatewayId)]
+func (m *GatewaysManager) Remove(id string) error {
+	g, ok := m.Gateways[id]
+	if !ok {
+		return errors.New("gateway " + id + " doesn't exist")
+	}
+
+	err := g.shutdown()
+	if err != nil {
+		return err
+	}
+
+	delete(m.Gateways, id)
+
+	return nil
+}
+
+func (m *GatewaysManager) AddEndpoint(gatewayId string, method string, relPath string, taskId string) error {
+	g, ok := m.Gateways[gatewayId]
 	if !ok {
 		return errors.New("invalid gateway id")
 	}
@@ -74,7 +81,7 @@ func (m *GatewaysManager) AddEndpoint(gatewayId ledger.ResourceId, method string
 	}
 
 	endpoints[relPath] = EndpointConfig{
-		task,
+		taskId,
 	}
 
 	return nil

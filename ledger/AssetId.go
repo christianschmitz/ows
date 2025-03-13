@@ -4,43 +4,34 @@ import (
 	"errors"
 	"log"
 	"os"
-	"strconv"
-	"golang.org/x/crypto/sha3"
 )
-
-type AssetId = [32]byte
 
 const ASSET_ID_PREFIX = "asset"
 
-func GenerateAssetId(content []byte) AssetId {
-	return sha3.Sum256(content)
+func GenerateAssetId(content []byte) string {
+	idBytes := DigestCompact(content)
+
+	return stringifyAssetId(idBytes)
 }
 
-func StringifyAssetId(id AssetId) string {
-	return StringifyHumanReadableBytes(ASSET_ID_PREFIX, id[:])
+func stringifyAssetId(idBytes []byte) string {
+	return StringifyHumanReadableBytes(ASSET_ID_PREFIX, idBytes)
 }
 
-func ParseAssetId(h string) (AssetId, error) {
-	rawId, err := ParseHumanReadableBytes(h, ASSET_ID_PREFIX)
-	if err != nil {
-		return [32]byte{}, err
+func GetAssetsDir() string {
+	assetsDir := HomeDir + "/assets"
+
+	if err := os.MkdirAll(assetsDir, os.ModePerm); err != nil {
+		log.Fatal(err)
 	}
 
-	if len(rawId) != 32 {
-		return [32]byte{}, errors.New("asset id not exactly 32 bytes long, got " + strconv.Itoa(len(rawId)) + " bytes")
-	}
-
-	id := [32]byte{}
-
-	for i, b := range rawId {
-		id[i] = b
-	}
-
-	return id, nil
+	return assetsDir
 }
 
-func AssetExists(id AssetId) bool {
-	path := HomeDir + "/assets/" + StringifyAssetId(id)
+func AssetExists(id string) bool {
+	assetsDir := GetAssetsDir()
+
+	path := assetsDir + "/" + id
 
 	_, err := os.Stat(path)
 

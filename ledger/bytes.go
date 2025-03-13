@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"log"
+	"golang.org/x/crypto/blake2b"
 	"github.com/btcsuite/btcutil/bech32"
 )
 
@@ -41,4 +42,16 @@ func ParseHumanReadableBytes(str string, expectedPrefix string) ([]byte, error) 
 
 func ParseCompactBytes(str string) ([]byte, error) {
 	return base64.URLEncoding.WithPadding(base64.NoPadding).DecodeString(str)
+}
+
+func DigestCompact(bs []byte) []byte {
+	hasher, err := blake2b.New(16, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	hasher.Write(bs)
+	hash := hasher.Sum(nil)
+
+	return hash
 }
