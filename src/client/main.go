@@ -41,127 +41,36 @@ func configureCLI() *cobra.Command {
     root.AddCommand(&cobra.Command{
         Use: "init",
         Short: "Create genesis config",
-        Run: func(cmd *cobra.Command, args []string) {
-            if len(args) != 1 {
-                log.Fatal("expected 1 arg")    
-            }
-
-            keyPair := getKeyPair()
-
-            g := ledger.NewGenesisChangeSet(
-                actions.NewAddNode(
-                    args[0],
-                ),
-            )
-
-            // TODO: multi-sig
-            signature, err := keyPair.SignChangeSet(g)
-            if err != nil {
-                log.Fatal(err)
-            }
-
-            g.Signatures = append(g.Signatures, signature)
-
-            fmt.Println(g.EncodeToString())
-		},
+        Run: makeInitialConfig,
     })
 
     root.AddCommand(&cobra.Command{
         Use: "nodes",
-        Short: "List node addresses",
-        Run: func(cmd *cobra.Command, _ []string) {
-            l := readLedger()
-            m := actions.ListNodes(l)
-
-            for id, addr := range m {
-                fmt.Printf("%s %s\n", id, addr)
-            }
-        },
+        Short: "List and manage nodes",
+        Run: listNodes,
     })
 
     root.AddCommand(&cobra.Command{
         Use: "hashes",
         Short: "List config change hashes (including genesis)",
-        Run: func(cmd *cobra.Command, _ []string) {
-            c := getSyncedLedgerClient()
-
-            hashes, err := c.GetChangeSetHashes()
-
-            if err != nil {
-                log.Fatal(err)
-            }
-
-            for i, h := range hashes.Hashes {
-                if i == 0 {
-                    fmt.Printf("%s\n", ledger.StringifyProjectHash(h))
-                } else {
-                    fmt.Printf("%s\n", ledger.StringifyChangeSetHash(h))
-                }
-            }
-        },
+        Run: listChangeSets,
     })
 
     root.AddCommand(&cobra.Command{
         Use: "assets",
         Short: "List assets",
-        Run: func(cmd *cobra.Command, args []string) {
-            if len(args) != 0 {
-                log.Fatal("expected 0 args")
-            }
-
-            c := getSyncedLedgerClient()
-
-            assets, err := c.GetAssets()
-            if err != nil {
-                log.Fatal(err)
-            }
-
-            for _, a := range assets {
-                fmt.Println(a)
-            }
-        },
+        Run: listAssets,
     })
     root.AddCommand(&cobra.Command{
         Use: "upload",
         Short: "Upload file (fails for directories)",
-        Run: func(cmd *cobra.Command, args []string) {
-            if len(args) < 1 {
-                log.Fatal("expected at least 1 arg")
-            }
-
-            c := getSyncedLedgerClient()
-
-            for _, arg := range args {
-                bs, err := os.ReadFile(arg)
-                if err != nil {
-                    log.Fatal(err)
-                }
-
-                id, err := c.UploadFile(bs)  
-                if err != nil {
-                    log.Fatal(err)
-                }
-
-                fmt.Printf("%s: %s\n", arg, id)
-            }
-        },
+        Run: uploadAssets,
     })
 
     gateways := &cobra.Command{
         Use: "gateways",
         Short: "List and manage gateways",
-        Run: func (cmd *cobra.Command, args []string) {
-            if len(args) != 0 {
-                log.Fatal("unexpected args")
-            }
-
-            c := getSyncedLedgerClient()
-            gateways := actions.ListGateways(c.Ledger)
-
-            for id, config := range gateways {
-                fmt.Printf("%s %d\n", id, config.Port)
-            }
-        },
+        Run: listGateways,
     }
 
     gateways.AddCommand(&cobra.Command{

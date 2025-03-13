@@ -1,7 +1,6 @@
 package ledger
 
 import (
-	"bytes"
 	"errors"
 	"strconv"	
 )
@@ -55,84 +54,6 @@ func newValidationContext(validateAssets bool, rootUsers []PubKey) *ValidationCo
 		policies: map[string]policyValidationConfig{},
 		gateways: map[string]gatewayValidationConfig{},
 	}
-}
-
-func (l *Ledger) ValidateAll(validateAssets bool) error {
-	rootSignatures := l.Changes[0].Signatures[:]
-
-	genesisBytes, err := l.Changes[0].Encode(true)
-	if err != nil {
-		return err
-	}
-
-	for _, s := range rootSignatures {
-		if !s.Verify(genesisBytes) {
-			return errors.New("invalid root signature")
-		}
-	}
-
-	rootUsers := l.Changes[0].CollectSigners()
-
-	// create validation context
-	context := newValidationContext(validateAssets, rootUsers)
-
-	// replay all the changes
-
-	head := []byte{}
-
-	for i, c := range l.Changes {
-		// check that the Parent corresponds
-		if !bytes.Equal(c.Parent, head) {
-			return errors.New("Invalid change set head, expected " + StringifyChangeSetHash(head) + ", got " + StringifyChangeSetHash(c.Parent))
-		}
-
-		// first validate that the signatures correspond
-		signers := []PubKey{}
-
-		if i == 0 {
-			signers = rootUsers
-		} else {
-			for _, s := range c.Signatures {
-				cbs, err := c.Encode(true)
-				if err != nil {
-					return err
-				}
-
-				if !s.Verify(cbs) {
-					return errors.New("invalid change set signatures")
-				}
-			}
-
-			signers = c.CollectSigners()
-		}
-
-		// check that all the actions can actually be taken by the signers
-		userPolicies, err := context.getSignatoryPermissions(signers)
-		if err != nil {
-			return err
-		}
-
-		for _, a := range c.Actions {
-			allowed := false
-			for _, policy := range userPolicies {
-				if policy.AllowsAll(a.GetResources(), a.GetCategory(), a.GetName()) {
-					allowed = true
-				}
-			}
-
-			if !allowed {
-				return errors.New("merged policy of all signers doesn't allow " + a.GetCategory() + ":" + a.GetName())
-			}
-		}
-
-		if err := c.Apply(context); err != nil {
-			return err
-		}
-
-		head = c.Hash()
-	}
-
-	return nil
 }
 
 func (c *ValidationContext) getPolicy(id string) (*Policy, error) {

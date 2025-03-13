@@ -1,2 +1,3 @@
 #!/bin/bash
-go build -C ./src -o ../dist/ows ./client/main.go 
+cd ./src
+go build -o ../dist/ows ./client/*.go
