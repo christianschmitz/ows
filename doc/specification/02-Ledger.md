@@ -85,3 +85,14 @@ A policy consists of multiple policy statements. To determine the change set act
    3. If the requested action isn't mentioned in the resulting set, the action is rejected
    
 The order of policy statements in the policy doesn't matter.
+
+### Upgradeability
+
+It is easy to upgrade the node and client software, but it is not easy to upgrade the ledger once non-backward compatible changes are introduced (e.g. action attributes in a different order).
+
+The latest version of the client and node must be able to validate and operate on current and all past versions of the ledger.
+This means that the ledger can't be decoded all at once, but must be decoded change set per change set.
+
+The top-level ledger CBOR encoding is a list of bytestrings. 
+The first entry is the starting version number of the ledger, as a CBOR encoded int. 
+The second entry the CBOR encoded initial config, the third entry is the first change set etc.

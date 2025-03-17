@@ -1,11 +1,13 @@
-package ledger
+package main
 
 import (
 	"encoding/base64"
 	"errors"
+	"log"
+	"strings"
+
 	"github.com/btcsuite/btcutil/bech32"
 	"golang.org/x/crypto/blake2b"
-	"log"
 )
 
 func StringifyHumanReadableBytes(prefix string, bs []byte) string {
@@ -14,34 +16,38 @@ func StringifyHumanReadableBytes(prefix string, bs []byte) string {
 		log.Fatal(err)
 	}
 
-	str, err := bech32.Encode(prefix, conv)
+	s, err := bech32.Encode(prefix, conv)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return str
+	return s
 }
 
-func StringifyCompactBytes(bs []byte) string {
+func EncodeBytes(bs []byte) string {
 	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(bs)
 }
 
-func ParseHumanReadableBytes(str string, expectedPrefix string) ([]byte, error) {
-	prefix, bs, err := bech32.Decode(str)
+func ParseHumanReadableBytes(s string, expectedPrefix string) ([]byte, error) {
+	s = strings.TrimSpace(s)
+
+	prefix, bs, err := bech32.Decode(s)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if prefix != expectedPrefix {
+	if expectedPrefix != "*" && prefix != expectedPrefix {
 		return nil, errors.New("unexpected bech32 prefix " + prefix)
 	}
 
 	return bech32.ConvertBits(bs, 5, 8, false)
 }
 
-func ParseCompactBytes(str string) ([]byte, error) {
-	return base64.URLEncoding.WithPadding(base64.NoPadding).DecodeString(str)
+func DecodeBytes(s string) ([]byte, error) {
+	s = strings.TrimSpace(s)
+
+	return base64.URLEncoding.WithPadding(base64.NoPadding).DecodeString(s)
 }
 
 func DigestCompact(bs []byte) []byte {

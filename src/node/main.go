@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"ows/actions"
+
 	"ows/ledger"
 	"ows/resources"
 )
 
-var _ActionsInitialized = actions.InitializeActions()
+const keyPath = "/etc/ows/key"
+
+var testDir string
 
 func main() {
 	initializeHomeDir()
@@ -21,11 +23,35 @@ func main() {
 
 	rm := resources.NewResourceManager()
 
+	// TODO: sync from the snapshot instead
 	l.ApplyAll(rm)
 
 	go ledger.ListenAndServeLedger(l, rm)
 
 	select {}
+}
+
+// Preference order:
+//   1. `/etc/ows/key` or 
+//   2.
+func readKeyPair() *KeyPair {
+	if testDir == "" {
+		_, err := os.Stat(keyPath) 
+		if err == nil {
+			k, err := ledger.ReadKeyPair(keyPath)
+			if err != nil {
+				panic(fmt.Sprintf9"unable to read keypair at %s (%v)", keyPath, err)
+			}
+			
+			return k
+		} else if !errors.Is(err, os.ErrNotExist) {
+			panic(fmt.Sprintf("failed to stat /etc/ows/key (%v)", err))
+		}
+	}
+
+	str, exists := os.LookupEnv(GENESIS_ENV_VAR_NAME)
+
+
 }
 
 func initializeHomeDir() {

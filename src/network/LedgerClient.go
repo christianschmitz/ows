@@ -1,8 +1,8 @@
-package sync
+package network
 
 import (
 	"log"
-	"ows/actions"
+
 	"ows/ledger"
 )
 
@@ -28,36 +28,36 @@ func (c *LedgerClient) Sync() error {
 		return err
 	}
 
-	if ledger.IsSameChangeSetHash(c.Ledger.Head, head) {
+	if c.Ledger.Head() == head {
 		return nil
 	}
 
-	remoteChangeSetHashes, err := node.GetChangeSetHashes()
+	remoteChangeSetIDs, err := node.GetChangeSetIDs()
 	if err != nil {
 		return err
 	}
 
-	thisChangeSetHashes := c.Ledger.GetChangeSetHashes()
+	thisChangeSetIDs := c.Ledger.IDChain()
 
-	p, err := thisChangeSetHashes.FindIntersection(remoteChangeSetHashes)
+	p, err := thisChangeSetIDs.Intersect(remoteChangeSetIDs)
 	if err != nil {
 		return err
 	}
 
 	// remove [p+1:] from local ledger
-	c.Ledger.KeepChangeSets(p)
+	c.Ledger.Keep(p)
 
 	// download [p+1:] from remote ledger
-	if p+1 < len(remoteChangeSetHashes.Hashes) {
-		for i := p + 1; i < len(remoteChangeSetHashes.Hashes); i++ {
-			h := remoteChangeSetHashes.Hashes[i]
+	if p+1 < len(remoteChangeSetIDs.Hashes) {
+		for i := p + 1; i < len(remoteChangeSetIDs.Hashes); i++ {
+			h := remoteChangeSetIDs.Hashes[i]
 
 			cs, err := node.GetChangeSet(h)
 			if err != nil {
 				return err
 			}
 
-			if err := c.Ledger.AppendChangeSet(cs, false); err != nil {
+			if err := c.Ledger.Append(cs); err != nil {
 				return err
 			}
 		}
@@ -70,10 +70,10 @@ func (c *LedgerClient) Sync() error {
 
 // returns the node address
 func (c *LedgerClient) PickNode() *NodeSyncClient {
-	m := actions.ListNodes(c.Ledger)
+	m := c.Ledger.Snapshot().Nodes
 
-	for _, a := range m {
-		return NewNodeSyncClient(a)
+	for _, conf := range m {
+		return NewNodeSyncClient(conf.Address)
 	}
 
 	log.Fatal("no nodes found")
@@ -81,10 +81,10 @@ func (c *LedgerClient) PickNode() *NodeSyncClient {
 	return nil
 }
 
-func (c *LedgerClient) GetChangeSetHashes() (*ledger.ChangeSetHashes, error) {
+func (c *LedgerClient) GetChangeSetIDs() (*ledger.ChangeSetIDChain, error) {
 	node := c.PickNode()
 
-	return node.GetChangeSetHashes()
+	return node.GetChangeSetIDs()
 }
 
 func (c *LedgerClient) PublishChangeSet(cs *ledger.ChangeSet) error {

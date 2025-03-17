@@ -6,15 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
 	"os/exec"
-	"ows/ledger"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const DOCKER_IMAGE_NAME = "ows_nodejs_image"
@@ -75,7 +75,7 @@ func (m *TasksManager) Remove(id string) error {
 }
 
 func makeTmpDir() (string, error) {
-	tmpDir := ledger.HomeDir + "/tmp/" + uuid.NewString()
+	tmpDir := HomeDir + "/tmp/" + uuid.NewString()
 
 	if err := os.MkdirAll(tmpDir, os.ModePerm); err != nil {
 		return "", err
@@ -84,7 +84,7 @@ func makeTmpDir() (string, error) {
 	return tmpDir, nil
 }
 
-func (m *TasksManager) Run(id string, arg interface{}) (interface{}, error) {
+func (m *TasksManager) Run(id string, arg any) (any, error) {
 	taskConf, ok := m.Tasks[id]
 	if !ok {
 		return nil, errors.New("task " + id + " not found")
@@ -108,7 +108,7 @@ func runNodeScriptDirectly(scriptPath string) (string, error) {
 	return string(output), nil
 }
 
-func runNodeScriptInDocker(handler string, arg interface{}) (interface{}, error) {
+func runNodeScriptInDocker(handler string, arg any) (any, error) {
 	start := time.Now()
 
 	tmpDir, err := makeTmpDir()
@@ -137,7 +137,7 @@ func runNodeScriptInDocker(handler string, arg interface{}) (interface{}, error)
 
 	// run the docker container
 	// TODO: send command to IPC socket instead
-	conn, err := net.Dial("unix", ledger.HomeDir+"/tmp/"+IPC_SOCKET_NAME)
+	conn, err := net.Dial("unix", HomeDir+"/tmp/"+IPC_SOCKET_NAME)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,7 @@ func runNodeScriptInDocker(handler string, arg interface{}) (interface{}, error)
 
 	durationInner := time.Since(startInner)
 
-	var output map[string]interface{}
+	var output map[string]any
 	err = json.Unmarshal([]byte(response), &output)
 	if err != nil {
 		return nil, err
@@ -221,7 +221,7 @@ func runNodeScriptInDocker(handler string, arg interface{}) (interface{}, error)
 }
 
 func copyAsset(assetId string, dst string) error {
-	assetsDir := ledger.GetAssetsDir()
+	assetsDir := GetAssetsDir()
 	src := assetsDir + "/" + assetId
 
 	input, err := ioutil.ReadFile(src)
@@ -236,7 +236,7 @@ func copyAsset(assetId string, dst string) error {
 	return nil
 }
 
-func writeJson(input interface{}, dst string) error {
+func writeJson(input any, dst string) error {
 	inputData, err := json.Marshal(input)
 	if err != nil {
 		return err
@@ -249,13 +249,13 @@ func writeJson(input interface{}, dst string) error {
 	return nil
 }
 
-func readJson(src string) (interface{}, error) {
+func readJson(src string) (any, error) {
 	outputData, err := ioutil.ReadFile(src)
 	if err != nil {
 		return nil, err
 	}
 
-	var output interface{}
+	var output any
 
 	if err := json.Unmarshal(outputData, &output); err != nil {
 		return nil, err
@@ -311,7 +311,7 @@ func initializeDocker() error {
 		return err
 	}
 
-	cmd = exec.Command("docker", "run", "-d", "--name", DOCKER_CONTAINER_NAME, "-v", ledger.HomeDir+"/tmp:/data", DOCKER_IMAGE_NAME)
+	cmd = exec.Command("docker", "run", "-d", "--name", DOCKER_CONTAINER_NAME, "-v", HomeDir+"/tmp:/data", DOCKER_IMAGE_NAME)
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

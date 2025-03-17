@@ -1,4 +1,4 @@
-package ledger
+package network
 
 import (
 	"encoding/json"
@@ -11,16 +11,19 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"ows/ledger"
+	"ows/resources"
 )
 
 const SYNC_PORT = 9000
 
 type syncHandler struct {
-	ledger          *Ledger
-	resourceManager ResourceManager
+	ledger          *ledger.Ledger
+	resourceManager *resources.ResourceManager
 }
 
-func ListenAndServeLedger(l *Ledger, rm ResourceManager) {
+func ListenAndServeLedger(l *ledger.Ledger, rm *resources.ResourceManager) {
 	s := &http.Server{
 		Addr:           ":" + strconv.Itoa(SYNC_PORT),
 		Handler:        &syncHandler{l, rm},
@@ -39,7 +42,7 @@ func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case "/":
 			// return a list of all the heads
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprintf(w, "%s", h.getLedgerChangeSetHashes())
+			fmt.Fprintf(w, "%s", h.getLedgerChangeSetIDs())
 			return
 		case "/assets":
 			assets, err := h.getLocalAssets()
@@ -56,7 +59,7 @@ func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "%s", h.getLedgerHeadString())
 			return
 		default:
-			hash, err := ParseChangeSetHash(r.URL.Path)
+			hash, err := ParseChangeSetID(r.URL.Path)
 			if err != nil {
 				http.Error(w, "Invalid change set format", 400)
 				return
@@ -147,11 +150,11 @@ func (h *syncHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *syncHandler) getLedgerHeadString() string {
-	return StringifyChangeSetHash(h.ledger.Head)
+	return StringifyChangeSetID(h.ledger.Head)
 }
 
-func (h *syncHandler) getLedgerChangeSetHashes() string {
-	return h.ledger.GetChangeSetHashes().Stringify()
+func (h *syncHandler) getLedgerChangeSetIDs() string {
+	return h.ledger.GetChangeSetIDs().Stringify()
 }
 
 func (h *syncHandler) getLocalAssets() (string, error) {

@@ -1,22 +1,10 @@
-package ledger
+package resources
 
 import (
 	"errors"
 	"log"
 	"os"
 )
-
-const ASSET_ID_PREFIX = "asset"
-
-func GenerateAssetId(content []byte) string {
-	idBytes := DigestCompact(content)
-
-	return stringifyAssetId(idBytes)
-}
-
-func stringifyAssetId(idBytes []byte) string {
-	return StringifyHumanReadableBytes(ASSET_ID_PREFIX, idBytes)
-}
 
 func GetAssetsDir() string {
 	assetsDir := HomeDir + "/assets"
