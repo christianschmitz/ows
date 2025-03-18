@@ -22,13 +22,17 @@ func newAssetManager(assetsDir string) *AssetManager {
 }
 
 func (m *AssetManager) Add(bs []byte) (ledger.AssetID, error) {
+	return AddAsset(m.AssetsDir, bs)
+}
+
+func AddAsset(assetsDir string, bs []byte) (ledger.AssetID, error) {
 	id := ledger.GenerateAssetID(bs)
 
-	p := path.Join(m.AssetsDir, string(id))
+	p := path.Join(assetsDir, string(id))
 
 	if _, err := os.Stat(p); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			if err := os.WriteFile(p, bs, 0644); err != nil {
+			if err := ledger.OverwriteSafe(p, bs); err != nil {
 				return id, fmt.Errorf("write error (%v)", err)
 			}
 		} else {
@@ -37,7 +41,6 @@ func (m *AssetManager) Add(bs []byte) (ledger.AssetID, error) {
 	}
 
 	return id, nil
-
 }
 
 func (m *AssetManager) AssetExists(id ledger.AssetID) bool {
@@ -60,9 +63,13 @@ func (m *AssetManager) AssetExists(id ledger.AssetID) bool {
 
 // List all locally stored assets
 func (m *AssetManager) ListAssets() []ledger.AssetID {
+	return ListAssets(m.AssetsDir)
+}
+
+func ListAssets(assetsDir string) []ledger.AssetID {
 	assets := make([]ledger.AssetID, 0)
 
-	files, err := os.ReadDir(m.AssetsDir)
+	files, err := os.ReadDir(assetsDir)
 	if err != nil {
 		return []ledger.AssetID{}
 	}

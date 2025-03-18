@@ -64,6 +64,14 @@ func (s *nodeState) ListAssets() []ledger.AssetID {
 	return s.resources.Assets.ListAssets()
 }
 
+func (s *nodeState) Rollback(p int) error {
+	l := s.ledger()
+
+	l.Keep(p)
+
+	return l.Write(s.ledgerPath())
+}
+
 func (s *nodeState) appConfigPath() string {
 	return s.appPath(s.systemConfigPath())
 }

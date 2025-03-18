@@ -7,6 +7,8 @@ import (
 	"path"
 
 	"ows/ledger"
+	"ows/network"
+	"ows/resources"
 )
 
 const (
@@ -36,6 +38,40 @@ type clientState struct {
 
 	cachedKeyPair *ledger.KeyPair
 	cachedLedger  *ledger.Ledger
+}
+
+func (s *clientState) AddAsset(bs []byte) (ledger.AssetID, error) {
+	return resources.AddAsset(s.assetsPath(), bs)
+}
+
+func (s *clientState) AppendChangeSet(cs *ledger.ChangeSet) error {
+	l := s.ledger()
+
+	if err := l.Append(cs); err != nil {
+		return err
+	}
+
+	if err := l.Write(s.ledgerPath()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *clientState) Ledger() *ledger.Ledger {
+	return s.ledger()
+}
+
+func (s *clientState) ListAssets() []ledger.AssetID {
+	return resources.ListAssets(s.assetsPath())
+}
+
+func (s *clientState) Rollback(p int) error {
+	l := s.ledger()
+
+	l.Keep(p)
+
+	return l.Write(s.ledgerPath())
 }
 
 func (s *clientState) appCachePath() string {
@@ -214,12 +250,19 @@ func (s *clientState) ledger() *ledger.Ledger {
 
 	s.cachedLedger = l
 
-	// TODO: sync with network
 	if !s.isOffline {
-		panic("ledger sync not yet implemented")
+		c := s.newAPIClient()
+
+		if err := c.Sync(); err != nil {
+			panic(err)
+		}
 	}
 
 	return l
+}
+
+func (s *clientState) newAPIClient() *network.APIClient {
+	return network.NewAPIClient(s.keyPair(), s)
 }
 
 func envHomePath(failMessage string) string {

@@ -42,7 +42,6 @@ func makeCLI() *cobra.Command {
 	cli.AddCommand(makeAssetsCLI())
 	cli.AddCommand(makeFunctionsCLI())
 	cli.AddCommand(makeGatewaysCLI())
-	//cli.AddCommand(makeInitCommand())
 	cli.AddCommand(makeKeyCLI())
 	cli.AddCommand(makeLedgerCLI())
 	cli.AddCommand(makeNodesCLI())
@@ -56,14 +55,19 @@ func makeCLI() *cobra.Command {
 func makeAssetsCLI() *cobra.Command {
 	assetsCLI := &cobra.Command{
 		Use:   "assets",
-		Short: "List assets",
-		//Run:   handleListAssets,
+		Short: "Manage assets",
 	}
 
 	assetsCLI.AddCommand(&cobra.Command{
-		Use:   "upload",
-		Short: "Upload file (fails for directories)",
-		//Run:   handleUploadAssets,
+		Use:   "list",
+		Short: "List all remote assets",
+		RunE:  handleListAssets,
+	})
+
+	assetsCLI.AddCommand(&cobra.Command{
+		Use:   "upload <file-1> [<file-2> ...]",
+		Short: "Upload files (fails for directories)",
+		RunE:  handleUploadAssets,
 	})
 
 	return withProjectFlags(assetsCLI)
@@ -71,16 +75,21 @@ func makeAssetsCLI() *cobra.Command {
 
 func makeFunctionsCLI() *cobra.Command {
 	functionsCLI := &cobra.Command{
-		Use:   "tasks",
-		Short: "List and manage functions",
-		//Run:   handleListFunctions,
+		Use:   "functions",
+		Short: "Manage project functions",
 	}
 
-	//tasksCLI.AddCommand(&cobra.Command{
-	//	Use:   "add",
-	//	Short: "Create a new task",
-	//	Run:   handleAddTask,
-	//})
+	functionsCLI.AddCommand(&cobra.Command{
+		Use:   "list",
+		Short: "List project functions",
+		RunE:  handleListFunctions,
+	})
+
+	functionsCLI.AddCommand(&cobra.Command{
+		Use:   "add",
+		Short: "Create a new function",
+		RunE:  handleAddFunction,
+	})
 
 	return withProjectFlags(functionsCLI)
 }
@@ -88,9 +97,14 @@ func makeFunctionsCLI() *cobra.Command {
 func makeGatewaysCLI() *cobra.Command {
 	gatewaysCLI := &cobra.Command{
 		Use:   "gateways",
-		Short: "List and manage gateways",
-		//Run:   handleListGateways,
+		Short: "Manage project gateways",
 	}
+
+	gatewaysCLI.AddCommand(&cobra.Command{
+		Use:   "list",
+		Short: "List project gateways",
+		RunE:  handleListGateways,
+	})
 
 	//gatewaysCLI.AddCommand(&cobra.Command{
 	//	Use:   "add",
@@ -112,22 +126,6 @@ func makeGatewaysCLI() *cobra.Command {
 
 	return withProjectFlags(gatewaysCLI)
 }
-
-//func makeInitCommand() *cobra.Command {
-//	initCmd := &cobra.Command{
-//		Use:   "init <node-public-key> <node-address> [--gossip-port <port>] [--api-port <port>]",
-//		Short: "Initialize an OWS project with a single bootstrap node",
-//		Long: `Initialize an OWS project
-//If the gossip port isn't specified, a random port is selected.
-//If the sync port isn't specified, a random port is selected`,
-//		RunE: handleInitProject,
-//	}
-//
-//	initCmd.Flags().Uint16Var(&gossipPort, "gossip-port", 0, "defaults to a random port")
-//	initCmd.Flags().Uint16Var(&apiPort, "api-port", 0, "defaults to a random port")
-//
-//	return initCmd
-//}
 
 func makeKeyCLI() *cobra.Command {
 	keyCLI := &cobra.Command{
@@ -249,6 +247,57 @@ func withProjectFlags(cmd *cobra.Command) *cobra.Command {
 	return cmd
 }
 
+func handleAddFunction(cmd *cobra.Command, args []string) error {
+	if err := cobra.ExactArgs(2)(cmd, args); err != nil {
+		return err
+	}
+
+	runtime := args[0]
+
+	if runtime != "nodejs" {
+		return fmt.Errorf("only nodejs runtime is currently supported")
+	}
+
+	handler := args[1]
+
+	nc := state.newAPIClient().PickNode()
+
+	var id ledger.AssetID
+	if bs, err := os.ReadFile(handler); err == nil {
+		// upload the file first
+
+		id, err = nc.UploadAsset(bs)
+		if err != nil {
+			return err
+		}
+	} else if strings.HasPrefix(handler, ledger.AssetIDPrefix) {
+		if err := ledger.ValidateID(handler, ledger.AssetIDPrefix); err != nil {
+			return err
+		}
+
+		id = ledger.AssetID(handler)
+	} else {
+		return fmt.Errorf("invalid handler asset %s", handler)
+	}
+
+	action := ledger.AddFunction{
+		Runtime:   "nodejs",
+		HandlerID: id,
+	}
+
+	cs := state.ledger().NewChangeSet(action)
+	kp := state.keyPair()
+
+	sig, err := kp.SignChangeSet(cs)
+	if err != nil {
+		return err
+	}
+
+	cs.Signatures = []ledger.Signature{sig}
+
+	return nc.AppendChangeSet(cs)
+}
+
 //func handleAddGateway(cmd *cobra.Command, args []string) {
 //	if len(args) != 1 {
 //		log.Fatal("expected 1 arg")
@@ -285,46 +334,6 @@ func withProjectFlags(cmd *cobra.Command) *cobra.Command {
 //	}
 //
 //	createChangeSet(ledger.NewAddGatewayEndpoint(gatewayId, method, path, taskId))
-//}
-
-//func handleAddTask(cmd *cobra.Command, args []string) {
-//	if len(args) != 2 {
-//		log.Fatal("expected 2 args")
-//	}
-//
-//	c := getSyncedLedgerClient()
-//
-//	runtime := args[0]
-//
-//	if runtime != "nodejs" {
-//		log.Fatal("only nodejs runtime is currently supported")
-//	}
-//
-//	handler := args[1]
-//
-//	id := ""
-//	if bs, err := os.ReadFile(handler); err == nil {
-//		// upload the file first
-//
-//		id, err = c.UploadFile(bs)
-//		if err != nil {
-//			log.Fatal(err)
-//		}
-//	} else if strings.HasPrefix(handler, "asset") {
-//		if err := ledger.ValidateResourceId(handler, "asset"); err != nil {
-//			log.Fatal(err)
-//		}
-//
-//		id = handler
-//	} else {
-//		log.Fatal("invalid handler asset " + handler)
-//	}
-//
-//	cs := c.Ledger.NewChangeSet(ledger.NewAddTask("nodejs", id))
-//
-//	if err := signAndSubmitChangeSet(c, cs); err != nil {
-//		log.Fatal(err)
-//	}
 //}
 
 func handleCreateNewProject(cmd *cobra.Command, args []string) error {
@@ -500,50 +509,54 @@ func handleInitClientKey(cmd *cobra.Command, args []string) error {
 //
 //	return nil
 //}
-//
-//func handleListAssets(cmd *cobra.Command, args []string) {
-//	if len(args) != 0 {
-//		log.Fatal("expected 0 args")
-//	}
-//
-//	c := getSyncedLedgerClient()
-//
-//	assets, err := c.GetAssets()
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	for _, a := range assets {
-//		fmt.Println(a)
-//	}
-//}
 
-//func handleListFunctions(cmd *cobra.Command, args []string) {
-//	if len(args) != 0 {
-//		log.Fatal("unexpected args")
-//	}
-//
-//	c := getSyncedLedgerClient()
-//
-//	functions := ledger.ListFunctions(c.Ledger)
-//
-//	for id, config := range functions {
-//		fmt.Printf("%s %s %s\n", id, config.Runtime, config.Handler)
-//	}
-//}
+func handleListAssets(cmd *cobra.Command, args []string) error {
+	if err := cobra.ExactArgs(0)(cmd, args); err != nil {
+		return err
+	}
 
-//func handleListGateways(cmd *cobra.Command, args []string) {
-//	if len(args) != 0 {
-//		log.Fatal("unexpected args")
-//	}
-//
-//	c := getSyncedLedgerClient()
-//	gateways := ledger.ListGateways(c.Ledger)
-//
-//	for id, config := range gateways {
-//		fmt.Printf("%s %d\n", id, config.Port)
-//	}
-//}
+	c := state.newAPIClient()
+	nc := c.PickNode()
+
+	assets, err := nc.Assets()
+	if err != nil {
+		return err
+	}
+
+	for _, a := range assets {
+		fmt.Println(a)
+	}
+
+	return nil
+}
+
+func handleListFunctions(cmd *cobra.Command, args []string) error {
+	if err := cobra.ExactArgs(0)(cmd, args); err != nil {
+		return err
+	}
+
+	l := state.ledger()
+
+	for id, conf := range l.Snapshot.Functions {
+		fmt.Printf("%s %s %s\n", id, conf.Runtime, conf.HandlerID)
+	}
+
+	return nil
+}
+
+func handleListGateways(cmd *cobra.Command, args []string) error {
+	if err := cobra.ExactArgs(0)(cmd, args); err != nil {
+		return err
+	}
+
+	l := state.ledger()
+
+	for id, conf := range l.Snapshot.Gateways {
+		fmt.Printf("%s %d\n", id, conf.Port)
+	}
+
+	return nil
+}
 
 func handleListLedgerChangeSets(cmd *cobra.Command, args []string) error {
 	if err := cobra.ExactArgs(0)(cmd, args); err != nil {
@@ -857,28 +870,31 @@ func handleShowKeyPhrase(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-//func handleUploadAssets(cmd *cobra.Command, args []string) {
-//	if len(args) < 1 {
-//		log.Fatal("expected at least 1 arg")
-//	}
-//
-//	c := getSyncedLedgerClient()
-//
-//	for _, arg := range args {
-//		bs, err := os.ReadFile(arg)
-//		if err != nil {
-//			log.Fatal(err)
-//		}
-//
-//		id, err := c.UploadFile(bs)
-//		if err != nil {
-//			log.Fatal(err)
-//		}
-//
-//		fmt.Printf("%s: %s\n", arg, id)
-//	}
-//}
-//
+func handleUploadAssets(cmd *cobra.Command, args []string) error {
+	if err := cobra.MinimumNArgs(1)(cmd, args); err != nil {
+		return err
+	}
+
+	c := state.newAPIClient()
+	nc := c.PickNode()
+
+	for _, arg := range args {
+		bs, err := os.ReadFile(arg)
+		if err != nil {
+			return err
+		}
+
+		// TODO: pick the right node for each asset
+		id, err := nc.UploadAsset(bs)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%s: %s\n", arg, id)
+	}
+
+	return nil
+}
 
 //func getLedgerPath(genesis *ChangeSet) string {
 //	h := StringifyProjectHash(genesis.Hash())

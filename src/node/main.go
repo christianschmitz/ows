@@ -56,7 +56,7 @@ func handleStartNode(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// get own node config
+	// Get own node config
 	kp := state.keyPair()
 	id := kp.Public.NodeID()
 	l := state.ledger()
@@ -68,55 +68,16 @@ func handleStartNode(cmd *cobra.Command, args []string) error {
 		panic("own id not found in ledger (TODO: sync from other nodes first)")
 	}
 
-	// Start the manager
 	state.resources = resources.NewManager(state.assetsPath())
 	state.resources.Sync(l.Snapshot)
-	// TODO: sync resources
 
-	go network.ServeAPI(conf.APIPort, state)
+	fmt.Printf("Starting OWS node for %s\n", l.ProjectID())
+
+	go network.ServeAPI(conf.APIPort, kp, state)
 	fmt.Printf("Hosting node API at https://%s:%d\n", conf.Address, conf.APIPort)
 
-	// TODO: start the gossip service
-
-	fmt.Printf("Started OWS node for %s\n", l.ProjectID())
+	go network.ServeGossip(conf.GossipPort, state)
+	fmt.Printf("Hosting gossip service at https://%s:%d\n", conf.Address, conf.GossipPort)
 
 	return nil
 }
-
-// Preference order:
-//   1. `/etc/ows/key` or
-//   2.
-//func readKeyPair() *KeyPair {
-//	if testDir == "" {
-//		_, err := os.Stat(keyPath)
-//		if err == nil {
-//			k, err := ledger.ReadKeyPair(keyPath)
-//			if err != nil {
-//				panic(fmt.Sprintf9"unable to read keypair at %s (%v)", keyPath, err)
-//			}
-//
-//			return k
-//		} else if !errors.Is(err, os.ErrNotExist) {
-//			panic(fmt.Sprintf("failed to stat /etc/ows/key (%v)", err))
-//		}
-//	}
-//
-//	str, exists := os.LookupEnv(GENESIS_ENV_VAR_NAME)
-//
-//
-//}
-
-//func initializeHomeDir() {
-//	path, exists := os.LookupEnv("HOME")
-//
-//	if exists {
-//		path = path + "/.ows/node"
-//	} else {
-//		// assume that if HOME isn't set the node has root user rights
-//		path = "/ows"
-//	}
-//
-//	ledger.SetHomeDir(path)
-//
-//	fmt.Println("Home dir: " + path)
-//}

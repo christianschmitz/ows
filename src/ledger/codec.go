@@ -9,14 +9,14 @@ import (
 	"github.com/fxamacker/cbor/v2"
 )
 
-// `encodeableChangeSet` is an intermediate representation of ChangeSet.
+// `EncodeableChangeSet` is an intermediate representation of ChangeSet.
 //
 // The Prev ChangeSetID has been converted into its underlying hash bytes, and
 // the actions have been converted into a CBOR encodeable format.
 //
 // Empty signatures are omitted to create the change set body that is used for
 // signing.
-type encodeableChangeSet struct {
+type EncodeableChangeSet struct {
 	Prev       []byte             `cbor:"0,keyasint"`
 	Actions    []encodeableAction `cbor:"1,keyasint"`
 	Signatures []Signature        `cbor:"2,keyasint,omitempty"`
@@ -159,20 +159,20 @@ func (v LedgerVersion) encode() []byte {
 }
 
 func DecodeChangeSet(bs []byte, v LedgerVersion) (*ChangeSet, error) {
-	ecs := new(encodeableChangeSet)
+	ecs := new(EncodeableChangeSet)
 
 	if err := cbor.Unmarshal(bs, ecs); err != nil {
 		return nil, fmt.Errorf("unable to decode change set (%v)", err)
 	}
 
-	return ecs.changeSet(v)
+	return ecs.ChangeSet(v)
 }
 
 func (cs *ChangeSet) Encode() []byte {
-	return newEncodeableChangeSet(cs).encode()
+	return NewEncodeableChangeSet(cs).encode()
 }
 
-func newEncodeableChangeSet(cs *ChangeSet) encodeableChangeSet {
+func NewEncodeableChangeSet(cs *ChangeSet) EncodeableChangeSet {
 	prev, err := cs.Prev.encode()
 	if err != nil {
 		panic(fmt.Sprintf("invalid Prev ChangeSetID %s (%v)", cs.Prev, err))
@@ -184,15 +184,15 @@ func newEncodeableChangeSet(cs *ChangeSet) encodeableChangeSet {
 		actions[i] = newEncodeableAction(a)
 	}
 
-	return encodeableChangeSet{
+	return EncodeableChangeSet{
 		Prev:       prev,
 		Actions:    actions,
 		Signatures: cs.Signatures,
 	}
 }
 
-// Converts an encodeableChangeSet back into a regular ChangeSet.
-func (ecs encodeableChangeSet) changeSet(v LedgerVersion) (*ChangeSet, error) {
+// Converts an EncodeableChangeSet back into a regular ChangeSet.
+func (ecs EncodeableChangeSet) ChangeSet(v LedgerVersion) (*ChangeSet, error) {
 	prev := decodeChangeSetID(ecs.Prev)
 	actions := make([]Action, len(ecs.Actions))
 
@@ -212,7 +212,7 @@ func (ecs encodeableChangeSet) changeSet(v LedgerVersion) (*ChangeSet, error) {
 	}, nil
 }
 
-func (ecs encodeableChangeSet) encode() []byte {
+func (ecs EncodeableChangeSet) encode() []byte {
 	bs, err := cbor.Marshal(ecs)
 	if err != nil {
 		panic(fmt.Sprintf("unable to encode change set (%v)", err))
@@ -226,8 +226,8 @@ func decodeChangeSetID(id []byte) ChangeSetID {
 	if len(id) == 0 {
 		return ChangeSetID("")
 	} else {
-		// Confusingly, `encodeBech32()` is used internally.
-		return ChangeSetID(encodeBech32(ChangeSetIDPrefix, id))
+		// Confusingly, `EncodeBech32()` is used internally.
+		return ChangeSetID(EncodeBech32(ChangeSetIDPrefix, id))
 	}
 }
 
@@ -237,8 +237,8 @@ func (id ChangeSetID) encode() ([]byte, error) {
 		return []byte{}, nil
 	}
 
-	// Confusingly, `decodeBech32()` is used internally.
-	prefix, bs, err := decodeBech32(string(id))
+	// Confusingly, `DecodeBech32()` is used internally.
+	prefix, bs, err := DecodeBech32(string(id))
 	if err != nil {
 		return nil, fmt.Errorf("invalid bech32 ChangeSetID %s (%v)", id, err)
 	}
@@ -250,7 +250,7 @@ func (id ChangeSetID) encode() ([]byte, error) {
 	return bs, nil
 }
 
-func decodeBech32(s string) (string, []byte, error) {
+func DecodeBech32(s string) (string, []byte, error) {
 	s = strings.TrimSpace(s)
 
 	prefix, bs5, err := bech32.Decode(s)
@@ -266,7 +266,7 @@ func decodeBech32(s string) (string, []byte, error) {
 	return prefix, bs, nil
 }
 
-func encodeBech32(prefix string, bs []byte) string {
+func EncodeBech32(prefix string, bs []byte) string {
 	bs5, err := bech32.ConvertBits(bs, 8, 5, true)
 	if err != nil {
 		panic(fmt.Sprintf("unable to convert bits of %x into bech32 form (%v)", bs, err))

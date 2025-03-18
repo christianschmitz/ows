@@ -123,7 +123,7 @@ func validateChangeSet(cs *ChangeSet, snapshot *Snapshot) error {
 }
 
 func validateResourceID(id ResourceID, expectedPrefix string) error {
-	prefix, bs, err := decodeBech32(string(id))
+	prefix, bs, err := DecodeBech32(string(id))
 	if err != nil {
 		return fmt.Errorf("invalid resource id format %s (%v)", id, err)
 	}

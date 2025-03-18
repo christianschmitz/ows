@@ -15,7 +15,7 @@ func (l *Ledger) ProjectID() ProjectID {
 		panic(fmt.Sprintf("invalid change set id (%v)", err))
 	}
 
-	return ProjectID(encodeBech32(ProjectIDPrefix, bs))
+	return ProjectID(EncodeBech32(ProjectIDPrefix, bs))
 }
 
 func (cs *ChangeSet) ID() ChangeSetID {
@@ -28,7 +28,7 @@ func (cs *ChangeSet) ID() ChangeSetID {
 func GenerateAssetID(bs []byte) AssetID {
 	hash := digestShort(bs)
 
-	return AssetID(encodeBech32(AssetIDPrefix, hash))
+	return AssetID(EncodeBech32(AssetIDPrefix, hash))
 }
 
 func (k PublicKey) UserID() UserID {
@@ -44,12 +44,12 @@ func (k PublicKey) NodeID() NodeID {
 func (k PublicKey) id(prefix string) ResourceID {
 	hash := digestShort(k)
 
-	return ResourceID(encodeBech32(prefix, hash))
+	return ResourceID(EncodeBech32(prefix, hash))
 }
 
 // Validate an id with a bech32 prefix
 func ValidateID(id string, expectedPrefix string) error {
-	prefix, _, err := decodeBech32(id)
+	prefix, _, err := DecodeBech32(id)
 	if err != nil {
 		return fmt.Errorf("invalid id %s (%v)", id, err)
 	}
@@ -81,7 +81,7 @@ func generateResourceId(prefix string, prev ChangeSetID, actionIndex uint) Resou
 
 	hash := digestShort(append(prevBytes, indexBytes...))
 
-	id := encodeBech32(prefix, hash)
+	id := EncodeBech32(prefix, hash)
 
 	return ResourceID(id)
 }

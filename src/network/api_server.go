@@ -11,20 +11,39 @@ import (
 	"ows/ledger"
 )
 
+// API server handler
 type apiHandler struct {
 	callbacks Callbacks
 }
 
-func ServeAPI(port ledger.Port, callbacks Callbacks) {
+func ServeAPI(port ledger.Port, kp *ledger.KeyPair, callbacks Callbacks) {
+	cert, err := makeTLSCertificate(*kp)
+	if err != nil {
+		panic(err)
+	}
+
+	tlsConf := makeServerTLSConfig(cert, func(k ledger.PublicKey) bool {
+		l := callbacks.Ledger()
+
+		if _, ok := l.Snapshot.Nodes[k.NodeID()]; ok {
+			return true
+		} else if _, ok := l.Snapshot.Users[k.UserID()]; ok {
+			return true
+		} else {
+			return false
+		}
+	})
+
 	s := &http.Server{
 		Addr:           fmt.Sprintf(":%d", port),
 		Handler:        &apiHandler{callbacks},
+		TLSConfig:      tlsConf,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
 
-	if err := s.ListenAndServe(); err != nil {
+	if err := s.ListenAndServeTLS("", ""); err != nil {
 		panic(err)
 	}
 }
@@ -47,7 +66,7 @@ func (h *apiHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case "/":
 			h.servePostChangeSet(w, r)
 		default:
-			http.Error(w, fmt.Sprintf("unhandled sync POST path %s", r.URL.Path), 404)
+			http.Error(w, fmt.Sprintf("unhandled POST path %s", r.URL.Path), 404)
 		}
 	case "PUT":
 		switch r.URL.Path {
@@ -57,7 +76,7 @@ func (h *apiHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("unhandled PUT path %s", r.URL.Path), 404)
 		}
 	default:
-		http.Error(w, fmt.Sprintf("unsupported sync http method %s", r.Method), 404)
+		http.Error(w, fmt.Sprintf("unsupported node API HTTP method %s", r.Method), 404)
 	}
 }
 
@@ -116,6 +135,7 @@ func (h *apiHandler) serveHead(w http.ResponseWriter, r *http.Request) {
 
 func (h *apiHandler) servePostChangeSet(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("invalid request body (%v)", err), 400)

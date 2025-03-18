@@ -10,4 +10,5 @@ type Callbacks interface {
 	AppendChangeSet(cs *ledger.ChangeSet) error
 	Ledger() *ledger.Ledger
 	ListAssets() []ledger.AssetID
+	Rollback(p int) error
 }
