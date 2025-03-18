@@ -23,7 +23,7 @@ func NewLedgerClient(l *ledger.Ledger) *LedgerClient {
 func (c *LedgerClient) Sync() error {
 	node := c.PickNode()
 
-	head, err := node.GetHead()
+	head, err := node.Head()
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func (c *LedgerClient) Sync() error {
 		return nil
 	}
 
-	remoteChangeSetIDs, err := node.GetChangeSetIDs()
+	remoteChangeSetIDs, err := node.ChangeSetIDChain()
 	if err != nil {
 		return err
 	}
@@ -48,11 +48,11 @@ func (c *LedgerClient) Sync() error {
 	c.Ledger.Keep(p)
 
 	// download [p+1:] from remote ledger
-	if p+1 < len(remoteChangeSetIDs.Hashes) {
-		for i := p + 1; i < len(remoteChangeSetIDs.Hashes); i++ {
-			h := remoteChangeSetIDs.Hashes[i]
+	if p+1 < len(remoteChangeSetIDs.IDs) {
+		for i := int(p) + 1; i < len(remoteChangeSetIDs.IDs); i++ {
+			h := remoteChangeSetIDs.IDs[i]
 
-			cs, err := node.GetChangeSet(h)
+			cs, err := node.ChangeSet(h)
 			if err != nil {
 				return err
 			}
@@ -63,17 +63,17 @@ func (c *LedgerClient) Sync() error {
 		}
 	}
 
-	c.Ledger.Write()
+	c.Ledger.Write("")
 
 	return nil
 }
 
 // returns the node address
 func (c *LedgerClient) PickNode() *NodeSyncClient {
-	m := c.Ledger.Snapshot().Nodes
+	m := c.Ledger.Snapshot.Nodes
 
 	for _, conf := range m {
-		return NewNodeSyncClient(conf.Address)
+		return NewNodeSyncClient(conf.Address, conf.APIPort)
 	}
 
 	log.Fatal("no nodes found")
@@ -81,10 +81,10 @@ func (c *LedgerClient) PickNode() *NodeSyncClient {
 	return nil
 }
 
-func (c *LedgerClient) GetChangeSetIDs() (*ledger.ChangeSetIDChain, error) {
+func (c *LedgerClient) ChangeSetIDChain() (*ledger.ChangeSetIDChain, error) {
 	node := c.PickNode()
 
-	return node.GetChangeSetIDs()
+	return node.ChangeSetIDChain()
 }
 
 func (c *LedgerClient) PublishChangeSet(cs *ledger.ChangeSet) error {

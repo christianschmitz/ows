@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"ows/ledger"
 )
 
 const DOCKER_IMAGE_NAME = "ows_nodejs_image"
@@ -25,26 +27,51 @@ const NODEJS_INPUT_NAME = "input.json"
 const NODEJS_OUTPUT_NAME = "output.json"
 const IPC_SOCKET_NAME = "socket.sock"
 
-type TaskConfig struct {
-	Runtime string
-	Handler string
+type Function struct {
+	Config ledger.FunctionConfig
 }
 
-type TasksManager struct {
+type FunctionManager struct {
 	dockerInitialized bool
-	Tasks             map[string]TaskConfig
+	Assets            *AssetManager
+	Functions         map[ledger.FunctionID]*Function
 }
 
-func NewTasksManager() *TasksManager {
-	return &TasksManager{
-		false,
-		map[string]TaskConfig{},
+func newFunctionManager(assets *AssetManager) *FunctionManager {
+	return &FunctionManager{
+		dockerInitialized: false,
+		Assets:            assets,
+		Functions:         map[ledger.FunctionID]*Function{},
 	}
 }
 
-func (m *TasksManager) Add(id string, handler string) error {
-	if _, ok := m.Tasks[id]; ok {
-		return errors.New("task added before")
+func (m *FunctionManager) Sync(functions map[ledger.FunctionID]ledger.FunctionConfig) error {
+	for id, conf := range functions {
+		if _, ok := m.Functions[id]; ok {
+			if err := m.update(id, conf); err != nil {
+				return fmt.Errorf("failed to update function %s (%v)", id, err)
+			}
+		} else {
+			if err := m.add(id, conf); err != nil {
+				return fmt.Errorf("failed to add function %s (%v)", id, err)
+			}
+		}
+	}
+
+	for id, _ := range m.Functions {
+		if _, ok := functions[id]; !ok {
+			if err := m.remove(id); err != nil {
+				return fmt.Errorf("failed to remove function %s (%v)", id, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (m *FunctionManager) add(id ledger.FunctionID, config ledger.FunctionConfig) error {
+	if _, ok := m.Functions[id]; ok {
+		return errors.New("function added before")
 	}
 
 	if !m.dockerInitialized {
@@ -56,45 +83,57 @@ func (m *TasksManager) Add(id string, handler string) error {
 		m.dockerInitialized = true
 	}
 
-	m.Tasks[id] = TaskConfig{"nodejs", handler}
+	m.Functions[id] = &Function{
+		Config: config,
+	}
 
-	fmt.Println("added task " + id)
 	return nil
 }
 
-func (m *TasksManager) Remove(id string) error {
-	if _, ok := m.Tasks[id]; !ok {
-		return errors.New("task not found")
+func (m *FunctionManager) remove(id ledger.FunctionID) error {
+	if _, ok := m.Functions[id]; !ok {
+		return errors.New("function not found")
 	}
 
 	// TODO: what if task is still being referenced elsewhere?
 
-	delete(m.Tasks, id)
+	delete(m.Functions, id)
 
 	return nil
 }
 
+func (m *FunctionManager) update(id ledger.FunctionID, config ledger.FunctionConfig) error {
+	_, ok := m.Functions[id]
+	if !ok {
+		return fmt.Errorf("function %s not found", id)
+	}
+
+	panic("Not yet implemented")
+}
+
+func (m *FunctionManager) Run(id ledger.FunctionID, arg any) (any, error) {
+	fn, ok := m.Functions[id]
+	if !ok {
+		return nil, fmt.Errorf("task %s not found", id)
+	}
+
+	conf := fn.Config
+
+	if conf.Runtime != "nodejs" {
+		return nil, fmt.Errorf("unsupported runtime %s", conf.Runtime)
+	}
+
+	return m.runNodeScriptInDocker(string(conf.HandlerID), arg)
+}
+
 func makeTmpDir() (string, error) {
-	tmpDir := HomeDir + "/tmp/" + uuid.NewString()
+	tmpDir := "/tmp/" + uuid.NewString()
 
 	if err := os.MkdirAll(tmpDir, os.ModePerm); err != nil {
 		return "", err
 	}
 
 	return tmpDir, nil
-}
-
-func (m *TasksManager) Run(id string, arg any) (any, error) {
-	taskConf, ok := m.Tasks[id]
-	if !ok {
-		return nil, errors.New("task " + id + " not found")
-	}
-
-	if taskConf.Runtime != "nodejs" {
-		return nil, errors.New("unsupported runtime " + taskConf.Runtime)
-	}
-
-	return runNodeScriptInDocker(taskConf.Handler, arg)
 }
 
 func runNodeScriptDirectly(scriptPath string) (string, error) {
@@ -108,7 +147,7 @@ func runNodeScriptDirectly(scriptPath string) (string, error) {
 	return string(output), nil
 }
 
-func runNodeScriptInDocker(handler string, arg any) (any, error) {
+func (m *FunctionManager) runNodeScriptInDocker(handler string, arg any) (any, error) {
 	start := time.Now()
 
 	tmpDir, err := makeTmpDir()
@@ -124,7 +163,7 @@ func runNodeScriptInDocker(handler string, arg any) (any, error) {
 	defer os.RemoveAll(tmpDir)
 
 	// write the necessary files
-	if err := copyAsset(handler, tmpDir+"/"+NODEJS_HANDLER_NAME); err != nil {
+	if err := m.copyAsset(handler, tmpDir+"/"+NODEJS_HANDLER_NAME); err != nil {
 		return nil, err
 	}
 
@@ -137,7 +176,7 @@ func runNodeScriptInDocker(handler string, arg any) (any, error) {
 
 	// run the docker container
 	// TODO: send command to IPC socket instead
-	conn, err := net.Dial("unix", HomeDir+"/tmp/"+IPC_SOCKET_NAME)
+	conn, err := net.Dial("unix", "/tmp/"+IPC_SOCKET_NAME)
 	if err != nil {
 		return nil, err
 	}
@@ -220,8 +259,8 @@ func runNodeScriptInDocker(handler string, arg any) (any, error) {
 	//return output, nil
 }
 
-func copyAsset(assetId string, dst string) error {
-	assetsDir := GetAssetsDir()
+func (m *FunctionManager) copyAsset(assetId string, dst string) error {
+	assetsDir := m.Assets.AssetsDir
 	src := assetsDir + "/" + assetId
 
 	input, err := ioutil.ReadFile(src)
@@ -311,7 +350,7 @@ func initializeDocker() error {
 		return err
 	}
 
-	cmd = exec.Command("docker", "run", "-d", "--name", DOCKER_CONTAINER_NAME, "-v", HomeDir+"/tmp:/data", DOCKER_IMAGE_NAME)
+	cmd = exec.Command("docker", "run", "-d", "--name", DOCKER_CONTAINER_NAME, "-v", "/tmp:/data", DOCKER_IMAGE_NAME)
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

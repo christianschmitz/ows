@@ -14,7 +14,7 @@ const GlobalResourceID = ResourceID("*")
 // Just like AWS policies, OWS policies consist of lists of policy statements.
 // An action is allowed if it is explicitly included in the set of all Allowed
 // actions minus the set of all Denied actions.
-// This means that an action that has been Denied, can't be overridden by 
+// This means that an action that has been Denied, can't be overridden by
 // Allow.
 type Policy struct {
 	Statements []PolicyStatement
@@ -137,7 +137,7 @@ func (s *PolicyStatement) matchesResource(resourceId ResourceID) bool {
 	return false
 }
 
-func actionAllowed(action Action, policies ...*Policy) bool {	
+func actionAllowed(action Action, policies ...*Policy) bool {
 	for _, policy := range policies {
 		if policy.Allows(action.Category(), action.Name(), action.Resources()...) {
 			return true

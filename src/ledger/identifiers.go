@@ -47,15 +47,29 @@ func (k PublicKey) id(prefix string) ResourceID {
 	return ResourceID(encodeBech32(prefix, hash))
 }
 
+// Validate an id with a bech32 prefix
+func ValidateID(id string, expectedPrefix string) error {
+	prefix, _, err := decodeBech32(id)
+	if err != nil {
+		return fmt.Errorf("invalid id %s (%v)", id, err)
+	}
+
+	if prefix != expectedPrefix {
+		return fmt.Errorf("invalid id %s, expected %s prefix, got %s prefix", id, expectedPrefix, prefix)
+	}
+
+	return nil
+}
+
 func newResourceIDGenerator(prev ChangeSetID, actionIndex uint) ResourceIDGenerator {
-	return func (prefix string) ResourceID {
+	return func(prefix string) ResourceID {
 		return generateResourceId(prefix, prev, actionIndex)
 	}
 }
 
-// Creates a resource id string by hashing a concatenation of the Prev 
+// Creates a resource id string by hashing a concatenation of the Prev
 // ChangeSetID hash, and the little endian encoding of the action index.
-// 
+//
 // The current ChangeSetID can't be used because it isn't known yet.
 func generateResourceId(prefix string, prev ChangeSetID, actionIndex uint) ResourceID {
 	prevBytes, err := prev.encode()
@@ -95,7 +109,7 @@ const shortDigestSize = 16
 // Blake2b is faster than Sha3 and allows generating shorter digests, which are
 // more readable and easier to use.
 //
-// Hash collision risk of using a short digest is low because each ledger is 
+// Hash collision risk of using a short digest is low because each ledger is
 // private and doesn't contain that many entries (unlike a public blockchain).
 // A hash collision in OWS also wouldn't result in any financial risk.
 func digestShort(bs []byte) []byte {
@@ -109,4 +123,3 @@ func digestShort(bs []byte) []byte {
 
 	return hash
 }
-

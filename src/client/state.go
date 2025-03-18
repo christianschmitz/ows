@@ -10,26 +10,29 @@ import (
 )
 
 const (
-	HomePathEnvName = "HOME"
-	XDGCachePathEnvName = "XDG_CACHE_HOME"
+	HomePathEnvName      = "HOME"
+	XDGCachePathEnvName  = "XDG_CACHE_HOME"
 	XDGConfigPathEnvName = "XDG_CONFIG_HOME"
-	XDGDataPathEnvName = "XDG_DATA_HOME"
+	XDGDataPathEnvName   = "XDG_DATA_HOME"
 
-	AppDirName = "ows"
-	DefaultCacheDirName = ".cache"
+	AppDirName           = "ows"
+	AssetsDirName        = "assets"
+	DefaultCacheDirName  = ".cache"
 	DefaultConfigDirName = ".config"
-	DefaultDataDirName = ".local/share"
-	AssetsDirName = "assets"
-	KeyPairFileName = "key"
-	LedgerFileName = "ledger"
-	LogsDirName = "logs"
-	ProjectsDirName = "projects"
+	DefaultDataDirName   = ".local/share"
+	KeyPairFileName      = "key"
+	LedgerFileName       = "ledger"
+	LogsDirName          = "logs"
+	ProjectsDirName      = "projects"
 )
 
 // The clientState is responsible for resolving files
 type clientState struct {
+	// don't sync with nodes if `isOffline` is true
+	isOffline bool
+
 	projectName string
-	testDir string
+	testDir     string
 
 	cachedKeyPair *ledger.KeyPair
 	cachedLedger  *ledger.Ledger
@@ -61,25 +64,33 @@ func (s *clientState) assetsPath() string {
 	return path.Join(s.appCachePath(), AssetsDirName)
 }
 
+func (s *clientState) currentProjectPath() string {
+	return path.Join(s.projectsDataPath(), string(s.currentProjectID()))
+}
+
 func (s *clientState) keyPairPath() string {
 	return path.Join(s.appConfigPath(), KeyPairFileName)
 }
 
 func (s *clientState) ledgerPath() string {
-	return path.Join(s.projectPath(), LedgerFileName)
+	return path.Join(s.currentProjectPath(), LedgerFileName)
 }
 
 func (s *clientState) logsPath() string {
 	return path.Join(s.appCachePath(), LogsDirName)
 }
 
-func (s *clientState) projectPath() string {
-	return path.Join(s.appDataPath(), ProjectsDirName, string(s.projectID()))
+func (s *clientState) projectsConfigPath() string {
+	return path.Join(s.appConfigPath(), ProjectsDirName)
 }
 
-func (s *clientState) projectID() ledger.ProjectID {
+func (s *clientState) projectsDataPath() string {
+	return path.Join(s.appDataPath(), ProjectsDirName)
+}
+
+func (s *clientState) currentProjectID() ledger.ProjectID {
 	if s.testDir != "" {
-		l, exists := envLedger()
+		l, exists := ledger.EnvLedger()
 		if !exists {
 			panic(fmt.Sprintf("%s not set (must be set when --test-dir is set)", ledger.InitialConfigEnvName))
 		}
@@ -87,11 +98,11 @@ func (s *clientState) projectID() ledger.ProjectID {
 		return l.ProjectID()
 	} else {
 		// Map project name to projectID
-		projectMappingPath := path.Join(s.userConfigPath(), ProjectsDirName, s.projectName)
+		projectMappingPath := path.Join(s.projectsConfigPath(), s.projectName)
 		bs, err := os.ReadFile(projectMappingPath)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				panic(fmt.Sprintf("%s doesn't exist", projectMappingPath))
+				panic(fmt.Sprintf("project %s not found at %s", s.projectName, projectMappingPath))
 			} else {
 				panic(err)
 			}
@@ -152,7 +163,7 @@ func (s *clientState) keyPair() *ledger.KeyPair {
 		return s.cachedKeyPair
 	}
 
-	kp, existsInEnv := envKeyPair()
+	kp, existsInEnv := ledger.EnvKeyPair()
 
 	if s.testDir != "" {
 		if !existsInEnv {
@@ -182,9 +193,9 @@ func (s *clientState) ledger() *ledger.Ledger {
 		return s.cachedLedger
 	}
 
-	l, existsInEnv := envLedger()
+	l, existsInEnv := ledger.EnvLedger()
 
-	if s.testDir != "" {		
+	if s.testDir != "" {
 		if !existsInEnv {
 			panic(fmt.Sprintf("%s not set (must be set when --test-dir is set)", ledger.InitialConfigEnvName))
 		}
@@ -196,12 +207,17 @@ func (s *clientState) ledger() *ledger.Ledger {
 		l, err = ledger.ReadLedger(p)
 		if errors.Is(err, os.ErrNotExist) {
 			panic(fmt.Sprintf("project ledger not found at %s", p))
-		} else {
+		} else if err != nil {
 			panic(err)
 		}
 	}
 
 	s.cachedLedger = l
+
+	// TODO: sync with network
+	if !s.isOffline {
+		panic("ledger sync not yet implemented")
+	}
 
 	return l
 }
@@ -213,33 +229,4 @@ func envHomePath(failMessage string) string {
 	}
 
 	return homePath
-}
-
-func envKeyPair() (*ledger.KeyPair, bool) {
-	privateKeyStr, exists := os.LookupEnv(ledger.PrivateKeyEnvName)
-	if !exists {
-		return nil, false
-		
-	}
-
-	k, err := ledger.ParsePrivateKey(privateKeyStr)
-	if err != nil {
-		panic(fmt.Sprintf("invalid %s (%v)", ledger.PrivateKeyEnvName, err))
-	}
-
-	return k.KeyPair(), true
-}
-
-func envLedger() (*ledger.Ledger, bool) {
-	initialConfigStr, exists := os.LookupEnv(ledger.InitialConfigEnvName)
-	if !exists {
-		return nil, false
-	}
-
-	l, err := ledger.ParseInitialConfig(initialConfigStr)
-	if err != nil {
-		panic(fmt.Sprintf("invalid %s (%v)", ledger.InitialConfigEnvName, err))
-	}
-
-	return l, true
 }

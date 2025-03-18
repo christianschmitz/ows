@@ -39,7 +39,7 @@ func (l *Ledger) Validate() error {
 		return fmt.Errorf("failed to validate ledger (%v)", err)
 	}
 
-	l.snapshot = snapshot
+	l.Snapshot = snapshot
 
 	return nil
 }
@@ -50,7 +50,7 @@ func validateAllChangeSets(
 	initialConfig *ChangeSet,
 	genChanges changeSetGenerator,
 	snapshot *Snapshot,
-	
+
 ) ([]ChangeSet, error) {
 	if err := validateFirstChangeSet(initialConfig, snapshot); err != nil {
 		return nil, err
@@ -118,6 +118,7 @@ func validateChangeSet(cs *ChangeSet, snapshot *Snapshot) error {
 	}
 
 	snapshot.Head = cs.ID()
+
 	return nil
 }
 
@@ -130,7 +131,6 @@ func validateResourceID(id ResourceID, expectedPrefix string) error {
 	if len(bs) != shortDigestSize {
 		return fmt.Errorf("invalid number of bytes in %s", id)
 	}
-
 
 	if prefix != expectedPrefix {
 		return fmt.Errorf("invalid resource id %s, expected prefix %s, got %s", id, expectedPrefix, prefix)

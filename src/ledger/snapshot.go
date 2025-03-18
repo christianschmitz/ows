@@ -4,26 +4,26 @@ import (
 	"fmt"
 )
 
-// Snapshot is used to validate a ledger. 
+// Snapshot is used to validate a ledger.
 type Snapshot struct {
-	version          LedgerVersion
-	Head             ChangeSetID
-	Functions        map[FunctionID]FunctionConfig
-	Gateways         map[GatewayID]GatewayConfig
-	Nodes            map[NodeID]NodeConfig
-	Policies         map[PolicyID]Policy
-	Users            map[UserID]UserConfig
+	Version   LedgerVersion
+	Head      ChangeSetID
+	Functions map[FunctionID]FunctionConfig
+	Gateways  map[GatewayID]GatewayConfig
+	Nodes     map[NodeID]NodeConfig
+	Policies  map[PolicyID]Policy
+	Users     map[UserID]UserConfig
 }
 
 func newSnapshot(v LedgerVersion) *Snapshot {
 	return &Snapshot{
-		version:          v,
-		Head:             ChangeSetID(""),
-		Functions:        map[FunctionID]FunctionConfig{},
-		Gateways:         map[GatewayID]GatewayConfig{},
-		Nodes:            map[NodeID]NodeConfig{},
-		Policies:         map[PolicyID]Policy{},
-		Users:            map[UserID]UserConfig{},
+		Version:   v,
+		Head:      ChangeSetID(""),
+		Functions: map[FunctionID]FunctionConfig{},
+		Gateways:  map[GatewayID]GatewayConfig{},
+		Nodes:     map[NodeID]NodeConfig{},
+		Policies:  map[PolicyID]Policy{},
+		Users:     map[UserID]UserConfig{},
 	}
 }
 
@@ -185,7 +185,7 @@ func (s *Snapshot) Ports() map[Port]ResourceID {
 
 	for id, node := range s.Nodes {
 		ports[node.GossipPort] = id
-		ports[node.SyncPort] = id
+		ports[node.APIPort] = id
 	}
 
 	return ports
@@ -199,7 +199,7 @@ func (s *Snapshot) UserPolicies(users []PublicKey) ([]*Policy, error) {
 
 		if conf, ok := s.Users[id]; ok {
 			if conf.IsRoot {
-				// Root users can never be locked out by Deny statements, so 
+				// Root users can never be locked out by Deny statements, so
 				// the root policy is immediately returend.
 				policies = append(policies, RootPolicy)
 			} else {

@@ -1,12 +1,12 @@
-// This package is responsible for reading, writing, encoding, decoding, and 
+// This package is responsible for reading, writing, encoding, decoding, and
 // validating OWS ledgers.
 //
-// Validating requires maintaining a snapshot of the ledger state, from which 
-// other convenient information can easily be derived (e.g. listing all the 
+// Validating requires maintaining a snapshot of the ledger state, from which
+// other convenient information can easily be derived (e.g. listing all the
 // current nodes).
 //
-// The ledger uses CBOR for its binary encoding, and consists of an initial 
-// version number followed by a list of change sets. Each change set has a 
+// The ledger uses CBOR for its binary encoding, and consists of an initial
+// version number followed by a list of change sets. Each change set has a
 // unique id, derived from its blake2b-128 hash, and contains a reference to
 // its preceding change set, a list of actions, and a list of signatures.
 //
@@ -42,8 +42,8 @@ const InitialConfigEnvName = "OWS_INITIAL_CONFIG"
 // generated on-demand by calling the `Ledger.Snapshot()` method.
 type Ledger struct {
 	InitialVersion LedgerVersion
-	Changes  []ChangeSet
-	snapshot *Snapshot
+	Changes        []ChangeSet
+	Snapshot       *Snapshot
 }
 
 // Every new LedgerVersion introduces breaking changes, so a single major
@@ -52,10 +52,10 @@ type Ledger struct {
 // The LedgerVersion starts at 1.
 type LedgerVersion uint
 
-const LatestLedgerVersion = 1
+const LatestLedgerVersion = LedgerVersion(1)
 
 // For convenience, the first change set (i.e. the initial configuration) and
-// latter change sets use the same structure. The `Prev`` ChangeSetID of the 
+// latter change sets use the same structure. The `Prev“ ChangeSetID of the
 // first change set is the empty string.
 //
 // ChangeSet signatures are based on the CBOR encoded ChangeSet without the
@@ -90,18 +90,18 @@ const ProjectIDPrefix = "project"
 // Each action must have a unique name per category.
 //
 // Valid action categories are:
-//    - functions
-//    - gateways
-//    - nodes
-//    - permissions
-//    - ...
+//   - functions
+//   - gateways
+//   - nodes
+//   - permissions
+//   - ...
 //
-// An action operates on resources, adding/removing or changing them. The 
+// An action operates on resources, adding/removing or changing them. The
 // `Resources` getter makes it easier to check resource-specific permissions
 // during ledger validation.
 //
 // The Apply() method makes it more manageable to update the project
-// configuration without inferring specific action types. The 
+// configuration without inferring specific action types. The
 // `ResourceIDGenerator` creates unique resource ids.
 //
 // TODO: should an Unapply() method be added? (for easy rollbacks)
@@ -116,13 +116,13 @@ type Action interface {
 // Every newly created resource is given a deterministic id.
 //
 // The resource id is calculated as follows:
-//    1. Take the hash of the previous change set (empty bytestring if the
-//       resource is defined in the initial configuration).
-//    2. Take the little endian encoding of the action index.
-//    3. Hash the concatenation of the bytestrings from step 1 and 2 using
-//       [Blake2b](https://en.wikipedia.org/wiki/BLAKE_(hash_function))-128).
-//    4. Generate a string with human-readable prefix using [Bech32](https://en.bitcoin.it/wiki/Bech32).
-//       A different prefix is used for each resource type.
+//  1. Take the hash of the previous change set (empty bytestring if the
+//     resource is defined in the initial configuration).
+//  2. Take the little endian encoding of the action index.
+//  3. Hash the concatenation of the bytestrings from step 1 and 2 using
+//     [Blake2b](https://en.wikipedia.org/wiki/BLAKE_(hash_function))-128).
+//  4. Generate a string with human-readable prefix using [Bech32](https://en.bitcoin.it/wiki/Bech32).
+//     A different prefix is used for each resource type.
 type ResourceID string
 
 type ResourceIDGenerator = func(prefix string) ResourceID
@@ -135,10 +135,10 @@ type UserID = ResourceID
 
 const (
 	FunctionIDPrefix = "fn"
-	GatewayIDPrefix = "gateway"
-	NodeIDPrefix = "node"
-	PolicyIDPrefix = "policy"
-	UserIDPrefix = "user"
+	GatewayIDPrefix  = "gateway"
+	NodeIDPrefix     = "node"
+	PolicyIDPrefix   = "policy"
+	UserIDPrefix     = "user"
 )
 
 // Some resources, like serverless functions, require files to operate. In OWS,
@@ -157,26 +157,26 @@ const AssetIDPrefix = "asset"
 type Port uint16
 
 type FunctionConfig struct {
-	Runtime string
+	Runtime   string
 	HandlerID AssetID
 }
 
 type GatewayConfig struct {
-	Port Port
+	Port      Port
 	Endpoints []GatewayEndpointConfig
 }
 
 type GatewayEndpointConfig struct {
-	Method string
-	Path string
+	Method     string
+	Path       string
 	FunctionID FunctionID
 }
 
 type NodeConfig struct {
-	Key     PublicKey
-	Address string 
+	Key        PublicKey
+	Address    string
 	GossipPort Port
-	SyncPort   Port
+	APIPort    Port
 }
 
 // Each user attached policy is independent and doesn't impact other policies
@@ -186,6 +186,20 @@ type UserConfig struct {
 	Key      PublicKey
 	IsRoot   bool
 	Policies []PolicyID
+}
+
+func EnvLedger() (*Ledger, bool) {
+	initialConfigStr, exists := os.LookupEnv(InitialConfigEnvName)
+	if !exists {
+		return nil, false
+	}
+
+	l, err := ParseLedger(initialConfigStr)
+	if err != nil {
+		panic(fmt.Sprintf("invalid %s (%v)", InitialConfigEnvName, err))
+	}
+
+	return l, true
 }
 
 func NewLedger(v LedgerVersion, initialConfig *ChangeSet) (*Ledger, error) {
@@ -212,9 +226,14 @@ func ReadLedger(path string) (*Ledger, error) {
 
 // Validates and appends a change set
 func (l *Ledger) Append(cs *ChangeSet) error {
-	snapshot := l.Snapshot()
+	snapshot := l.Snapshot
 
 	if err := validateChangeSet(cs, snapshot); err != nil {
+		// reset snapshot
+		if err := l.Validate(); err != nil {
+			panic(fmt.Sprintf("previous ledger state invalid (%v)", err))
+		}
+
 		return err
 	}
 
@@ -224,13 +243,13 @@ func (l *Ledger) Append(cs *ChangeSet) error {
 }
 
 func (l *Ledger) Head() ChangeSetID {
-	return l.Snapshot().Head
+	return l.Snapshot.Head
 }
 
 // Creates an unsigned change set.
 func (l *Ledger) NewChangeSet(actions ...Action) *ChangeSet {
 	cs := &ChangeSet{
-		Prev:     l.Head(),
+		Prev:       l.Head(),
 		Actions:    actions,
 		Signatures: []Signature{},
 	}
@@ -238,32 +257,16 @@ func (l *Ledger) NewChangeSet(actions ...Action) *ChangeSet {
 	return cs
 }
 
-// Returns the snapshot.
-// If the snapshot is nil, the snapshot is recreated by revalidating the ledger.
-// Validation errors are however not expected at this point, so they result in
-// a panic.
-func (l *Ledger) Snapshot() *Snapshot {
-	if l.snapshot != nil {
-		return l.snapshot
-	}
-
-	if err := l.Validate(); err != nil {
-		panic(fmt.Sprintf("revalidation failed (%v)", err))
-	}
-
-	return l.snapshot
-}
-
 // Encodes and writes the ledger to disk.
 func (l *Ledger) Write(path string) error {
 	bs := l.Encode()
 
-	return WriteSafe(path, bs)
+	return OverwriteSafe(path, bs)
 }
 
 // Creates any necessary parent directories, then writes a temporary file, and
 // finally move the temporary file to the given path location.
-func WriteSafe(p string, bs []byte) error {
+func OverwriteSafe(p string, bs []byte) error {
 	d := path.Dir(p)
 
 	if err := os.MkdirAll(d, 0755); err != nil {

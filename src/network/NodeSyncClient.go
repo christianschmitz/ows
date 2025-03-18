@@ -4,28 +4,28 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 
 	"ows/ledger"
 )
 
 type NodeSyncClient struct {
 	address string
+	port    ledger.Port
 }
 
-func NewNodeSyncClient(address string) *NodeSyncClient {
-	return &NodeSyncClient{address}
+func NewNodeSyncClient(address string, port ledger.Port) *NodeSyncClient {
+	return &NodeSyncClient{address, port}
 }
 
 func (c *NodeSyncClient) url(relPath string) string {
-	return "http://" + c.address + ":" + strconv.Itoa(ledger.SYNC_PORT) + "/" + relPath
+	return fmt.Sprintf("http://%s:%d/%s", c.address, c.port, relPath)
 }
 
-func (c *NodeSyncClient) GetHead() (ledger.ChangeSetID, error) {
+func (c *NodeSyncClient) Head() (ledger.ChangeSetID, error) {
 	resp, err := http.Get(c.url("head"))
-
 	if err != nil {
 		return "", err
 	}
@@ -37,11 +37,17 @@ func (c *NodeSyncClient) GetHead() (ledger.ChangeSetID, error) {
 		return "", err
 	}
 
-	return ledger.ParseChangeSetID(string(body))
+	id := string(body)
+
+	if err := ledger.ValidateID(id, ledger.ChangeSetIDPrefix); err != nil {
+		return "", err
+	}
+
+	return ledger.ChangeSetID(id), nil
 }
 
-func (c *NodeSyncClient) GetChangeSet(h ledger.ChangeSetID) (*ledger.ChangeSet, error) {
-	resp, err := http.Get(c.url(ledger.StringifyChangeSetID(h)))
+func (c *NodeSyncClient) ChangeSet(id ledger.ChangeSetID) (*ledger.ChangeSet, error) {
+	resp, err := http.Get(c.url(string(id)))
 	if err != nil {
 		return nil, err
 	}
@@ -53,10 +59,11 @@ func (c *NodeSyncClient) GetChangeSet(h ledger.ChangeSetID) (*ledger.ChangeSet, 
 		return nil, err
 	}
 
-	return ledger.DecodeChangeSet(body)
+	// TODO: get version from another endpoint
+	return ledger.DecodeChangeSet(body, ledger.LatestLedgerVersion)
 }
 
-func (c *NodeSyncClient) GetChangeSetIDs() (*ledger.ChangeSetIDs, error) {
+func (c *NodeSyncClient) ChangeSetIDChain() (*ledger.ChangeSetIDChain, error) {
 	resp, err := http.Get(c.url(""))
 	if err != nil {
 		return nil, err
@@ -69,35 +76,24 @@ func (c *NodeSyncClient) GetChangeSetIDs() (*ledger.ChangeSetIDs, error) {
 		return nil, err
 	}
 
-	rawHashes := []string{}
+	rawIDs := []string{}
 
-	err = json.Unmarshal(body, &rawHashes)
-
+	err = json.Unmarshal(body, &rawIDs)
 	if err != nil {
 		return nil, err
 	}
 
-	hashes := make([]ledger.ChangeSetID, len(rawHashes))
+	ids := make([]ledger.ChangeSetID, len(rawIDs))
 
-	for i, rh := range rawHashes {
-		if i == 0 {
-			h, err := ledger.ParseProjectHash(rh)
-			if err != nil {
-				return nil, err
-			}
-
-			hashes[i] = h
-		} else {
-			h, err := ledger.ParseChangeSetID(rh)
-			if err != nil {
-				return nil, err
-			}
-
-			hashes[i] = h
+	for i, id := range rawIDs {
+		if err := ledger.ValidateID(id, ledger.ChangeSetIDPrefix); err != nil {
+			return nil, err
 		}
+
+		ids[i] = ledger.ChangeSetID(id)
 	}
 
-	return &ledger.ChangeSetIDChain{hashes}, nil
+	return &ledger.ChangeSetIDChain{ids}, nil
 }
 
 func (c *NodeSyncClient) PublishChangeSet(cs *ledger.ChangeSet) error {

@@ -35,7 +35,7 @@ type encodeableAction struct {
 }
 
 // A function that unmarshals CBOR bytes into a specific Action type.
-type actionDecoder = func (attrBytes []byte) (Action, error)
+type actionDecoder = func(attrBytes []byte) (Action, error)
 
 // Decoding and validates a ledger.
 //
@@ -58,14 +58,14 @@ func DecodeLedger(bs []byte) (*Ledger, error) {
 		return nil, fmt.Errorf("failed to decode initial ledger version (%v)", err)
 	}
 
-	initialConfig, err := decodeChangeSet(entries[1], initialVersion)
+	initialConfig, err := DecodeChangeSet(entries[1], initialVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode first ledger change set (%v)", err)
 	}
 
 	snapshot := newSnapshot(initialVersion)
 
-	// Use a generator for the remaining change sets, so the validation 
+	// Use a generator for the remaining change sets, so the validation
 	// function can be used both here and to revalidate the ledger from the
 	// initial config.
 	genChanges := func(yield func(cs *ChangeSet, err error) bool) {
@@ -73,7 +73,7 @@ func DecodeLedger(bs []byte) (*Ledger, error) {
 
 		for {
 			if i < len(entries) {
-				cs, err := decodeChangeSet(entries[i], snapshot.version)
+				cs, err := DecodeChangeSet(entries[i], snapshot.Version)
 
 				i++
 
@@ -97,14 +97,14 @@ func DecodeLedger(bs []byte) (*Ledger, error) {
 
 	return &Ledger{
 		InitialVersion: initialVersion,
-		Changes: changes,
-		snapshot: snapshot,
+		Changes:        changes,
+		Snapshot:       snapshot,
 	}, nil
 }
 
 // The Initial config is the Ledger with only the version entry and the first
 // change set, encoded using base64.
-func ParseInitialConfig(s string) (*Ledger, error) {
+func ParseLedger(s string) (*Ledger, error) {
 	bs, err := base64.URLEncoding.WithPadding(base64.NoPadding).DecodeString(s)
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func ParseInitialConfig(s string) (*Ledger, error) {
 
 // Encodes the ledger into its binary CBOR representation.
 func (l *Ledger) Encode() []byte {
-	entries := make([][]byte, len(l.Changes) + 1)
+	entries := make([][]byte, len(l.Changes)+1)
 
 	// encode the initial version bytes
 	entries[0] = l.InitialVersion.encode()
@@ -130,6 +130,12 @@ func (l *Ledger) Encode() []byte {
 	}
 
 	return bs
+}
+
+func (l *Ledger) String() string {
+	bs := l.Encode()
+
+	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(bs)
 }
 
 func decodeLedgerVersion(bs []byte) (LedgerVersion, error) {
@@ -152,7 +158,7 @@ func (v LedgerVersion) encode() []byte {
 	return bs
 }
 
-func decodeChangeSet(bs []byte, v LedgerVersion) (*ChangeSet, error) {
+func DecodeChangeSet(bs []byte, v LedgerVersion) (*ChangeSet, error) {
 	ecs := new(encodeableChangeSet)
 
 	if err := cbor.Unmarshal(bs, ecs); err != nil {
@@ -179,8 +185,8 @@ func newEncodeableChangeSet(cs *ChangeSet) encodeableChangeSet {
 	}
 
 	return encodeableChangeSet{
-		Prev: prev,
-		Actions: actions,
+		Prev:       prev,
+		Actions:    actions,
 		Signatures: cs.Signatures,
 	}
 }
@@ -200,8 +206,8 @@ func (ecs encodeableChangeSet) changeSet(v LedgerVersion) (*ChangeSet, error) {
 	}
 
 	return &ChangeSet{
-		Prev: prev,
-		Actions: actions,
+		Prev:       prev,
+		Actions:    actions,
 		Signatures: ecs.Signatures,
 	}, nil
 }
@@ -217,12 +223,16 @@ func (ecs encodeableChangeSet) encode() []byte {
 
 // `decodeChangeSetID()` converts a bytestring into a human readable string.
 func decodeChangeSetID(id []byte) ChangeSetID {
-	// Confusingly, `encodeBech32()` is used internally.
-	return ChangeSetID(encodeBech32(ChangeSetIDPrefix, id))
+	if len(id) == 0 {
+		return ChangeSetID("")
+	} else {
+		// Confusingly, `encodeBech32()` is used internally.
+		return ChangeSetID(encodeBech32(ChangeSetIDPrefix, id))
+	}
 }
 
 func (id ChangeSetID) encode() ([]byte, error) {
-	// special case for first ChangeSet.Prev 
+	// special case for first ChangeSet.Prev
 	if id == "" {
 		return []byte{}, nil
 	}
@@ -286,9 +296,9 @@ func newActionDecoder[A Action]() actionDecoder {
 
 // A collection of all actionDecoders, as a triple nested map:
 //
-//    1. action category
-//    2. action name
-//    3. ledger version
+//  1. action category
+//  2. action name
+//  3. ledger version
 //
 // If a decoder for the current ledger version isn't available, the previous
 // available version is used (e.g. if the current ledger version is 3, but the

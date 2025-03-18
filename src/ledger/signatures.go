@@ -20,7 +20,8 @@ import (
 const PrivateKeyEnvName = "OWS_PRIVATE_KEY"
 
 // Although an Ed25519 private key is always 64 bytes, and an Ed25519 public key is always 32 bytes, it is more convenient
-//  to reuse the format from the crypto/ed25519 package (i.e. use []byte instead of [64]byte or [32]byte).
+//
+//	to reuse the format from the crypto/ed25519 package (i.e. use []byte instead of [64]byte or [32]byte).
 type PrivateKey ed25519.PrivateKey
 type PublicKey ed25519.PublicKey
 
@@ -30,8 +31,8 @@ type KeyPair struct {
 }
 
 type Signature struct {
-	Key   PublicKey   `cbor:"0,keyasint"`
-	Bytes [64]byte `cbor:"1,keyasint"`
+	Key   PublicKey `cbor:"0,keyasint"`
+	Bytes [64]byte  `cbor:"1,keyasint"`
 }
 
 func DecodeKeyPair(bytes []byte) (*KeyPair, error) {
@@ -46,6 +47,20 @@ func DecodeKeyPair(bytes []byte) (*KeyPair, error) {
 	}
 
 	return &p, nil
+}
+
+func EnvKeyPair() (*KeyPair, bool) {
+	privateKeyStr, exists := os.LookupEnv(PrivateKeyEnvName)
+	if !exists {
+		return nil, false
+	}
+
+	k, err := ParsePrivateKey(privateKeyStr)
+	if err != nil {
+		panic(fmt.Sprintf("invalid %s (%v)", PrivateKeyEnvName, err))
+	}
+
+	return k.KeyPair(), true
 }
 
 func RandomKeyPair() (*KeyPair, error) {
@@ -101,7 +116,7 @@ func (p *KeyPair) Phrase() ([]string, error) {
 	bs := []byte(p.Private)
 
 	// Only the first 32 bytes contain unique information (the latter 32 bytes are derived from the former 32 bytes)
-	seed := bs[0:32]	
+	seed := bs[0:32]
 
 	phrase, err := bip39.NewMnemonic(seed)
 	if err != nil {
@@ -126,7 +141,6 @@ func (p *KeyPair) Sign(message []byte) (Signature, error) {
 
 	return Signature{p.Public, sigBytes}, nil
 }
-
 
 func (p *KeyPair) SignChangeSet(cs *ChangeSet) (Signature, error) {
 	message := cs.withoutSignatures().Encode()
@@ -154,7 +168,7 @@ func (p *KeyPair) Write(path string) error {
 		return err
 	}
 
-	return WriteSafe(path, bytes)
+	return OverwriteSafe(path, bytes)
 }
 
 func ParsePrivateKey(s string) (PrivateKey, error) {
@@ -204,7 +218,7 @@ func (k PrivateKey) KeyPair() *KeyPair {
 	if bs, ok := pubKey.(ed25519.PublicKey); ok {
 		return &KeyPair{
 			Private: k,
-			Public: PublicKey(bs),
+			Public:  PublicKey(bs),
 		}
 	} else {
 		panic("derived public key isn't a bytestring")
@@ -215,7 +229,13 @@ func (k PrivateKey) String() string {
 	seed := []byte(k)[0:32]
 
 	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(seed)
-} 
+}
+
+func (k PublicKey) String() string {
+	bs := []byte(k)
+
+	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(bs)
+}
 
 func (s Signature) Verify(message []byte) bool {
 	return ed25519.Verify([]byte(s.Key)[:], message, s.Bytes[:])
@@ -249,11 +269,11 @@ func (cs *ChangeSet) validateSignatures() ([]PublicKey, error) {
 	return users, nil
 }
 
-// Creates a copy without signatures, which is 
+// Creates a copy without signatures, which is
 func (cs *ChangeSet) withoutSignatures() *ChangeSet {
 	return &ChangeSet{
-		Prev: cs.Prev,
-		Actions: cs.Actions,
+		Prev:       cs.Prev,
+		Actions:    cs.Actions,
 		Signatures: []Signature{},
 	}
 }

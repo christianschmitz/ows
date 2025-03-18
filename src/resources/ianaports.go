@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const outputPath = "./IANAPorts_gen.go"
+const outputPath = "./ianaports_gen.go"
 const ianaURL = "https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.csv"
 const portsPerLine = 10
 const indent = "    "
@@ -64,7 +64,7 @@ func main() {
 		}
 	}
 
-	f, err := os.Create("./IANAPorts_gen.go")
+	f, err := os.Create(outputPath)
 	if err != nil {
 		log.Fatal(err)
 	}

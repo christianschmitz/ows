@@ -3,14 +3,14 @@ package ledger
 import ()
 
 const (
-	FunctionsCategory = "functions"
-	AddFunctionName = "Add"
+	FunctionsCategory  = "functions"
+	AddFunctionName    = "Add"
 	RemoveFunctionName = "Remove"
 )
 
 // Currently, the only supported function runtime is "nodejs".
 type AddFunction struct {
-	Runtime   string `cbor:"0,keyasint"`
+	Runtime   string  `cbor:"0,keyasint"`
 	HandlerID AssetID `cbor:"1,keyasint"`
 }
 
@@ -30,7 +30,7 @@ func (a AddFunction) Apply(s *Snapshot, genID ResourceIDGenerator) error {
 	id := genID(FunctionIDPrefix)
 
 	return s.AddFunction(id, FunctionConfig{
-		Runtime: a.Runtime,
+		Runtime:   a.Runtime,
 		HandlerID: a.HandlerID,
 	})
 }
@@ -56,10 +56,10 @@ func (a RemoveFunction) Apply(s *Snapshot, _ ResourceIDGenerator) error {
 }
 
 const (
-	GatewaysCategory = "gateways"
-	AddGatewayName = "Add"
+	GatewaysCategory       = "gateways"
+	AddGatewayName         = "Add"
 	AddGatewayEndpointName = "AddEndpoint"
-	RemoveGatewayName = "Remove"
+	RemoveGatewayName      = "Remove"
 )
 
 type AddGateway struct {
@@ -82,7 +82,7 @@ func (a AddGateway) Apply(s *Snapshot, genID ResourceIDGenerator) error {
 	id := genID(GatewayIDPrefix)
 
 	return s.AddGateway(id, GatewayConfig{
-		Port: a.Port,
+		Port:      a.Port,
 		Endpoints: []GatewayEndpointConfig{},
 	})
 }
@@ -91,9 +91,9 @@ func (a AddGateway) Apply(s *Snapshot, genID ResourceIDGenerator) error {
 // FunctionID refers to the handler that will be invoked when the endpoint is
 // requested.
 type AddGatewayEndpoint struct {
-	GatewayID ResourceID `cbor:"0,keyasint"`
-	Method    string `cbor:"1,keyasint"`
-	Path      string `cbor:"2,keyasint"`
+	GatewayID  ResourceID `cbor:"0,keyasint"`
+	Method     string     `cbor:"1,keyasint"`
+	Path       string     `cbor:"2,keyasint"`
 	FunctionID ResourceID `cbor:"3,keyasint"`
 }
 
@@ -107,9 +107,9 @@ func (a AddGatewayEndpoint) Name() string {
 
 func (a AddGatewayEndpoint) Resources() []ResourceID {
 	// Permissions related to the invocation of a.FunctionID are attached to
-	// the resource id of the endpoint, not to the user who created the 
+	// the resource id of the endpoint, not to the user who created the
 	// endpoint.
-	// TODO: when invoking the function without authorization, should a 
+	// TODO: when invoking the function without authorization, should a
 	// permission error be thrown during runtime? or is it better the thrown an
 	// error during change set validation?
 	return []ResourceID{a.GatewayID}
@@ -117,8 +117,8 @@ func (a AddGatewayEndpoint) Resources() []ResourceID {
 
 func (a AddGatewayEndpoint) Apply(s *Snapshot, _ ResourceIDGenerator) error {
 	return s.AddGatewayEndpoint(a.GatewayID, GatewayEndpointConfig{
-		Method: a.Method,
-		Path: a.Path,
+		Method:     a.Method,
+		Path:       a.Path,
 		FunctionID: a.FunctionID,
 	})
 }
@@ -144,8 +144,8 @@ func (a RemoveGateway) Apply(s *Snapshot, _ ResourceIDGenerator) error {
 }
 
 const (
-	NodesCategory = "nodes"
-	AddNodeName = "Add"
+	NodesCategory  = "nodes"
+	AddNodeName    = "Add"
 	RemoveNodeName = "Remove"
 )
 
@@ -158,7 +158,7 @@ type AddNode struct {
 	Key        PublicKey `cbor:"0,keyasint"`
 	Address    string    `cbor:"1,keyasint"`
 	GossipPort Port      `cbor:"2,keyasint"`
-	SyncPort   Port      `cbor:"3,keyasint"`
+	APIPort    Port      `cbor:"3,keyasint"`
 }
 
 func (a AddNode) Category() string {
@@ -177,10 +177,10 @@ func (a AddNode) Apply(s *Snapshot, _ ResourceIDGenerator) error {
 	id := a.Key.NodeID()
 
 	return s.AddNode(id, NodeConfig{
-		Key: a.Key,
-		Address: a.Address,
+		Key:        a.Key,
+		Address:    a.Address,
 		GossipPort: a.GossipPort,
-		SyncPort: a.SyncPort,
+		APIPort:    a.APIPort,
 	})
 }
 
@@ -206,7 +206,7 @@ func (a RemoveNode) Apply(s *Snapshot, _ ResourceIDGenerator) error {
 
 const (
 	PermissionsCategory = "permissions"
-	AddUserName = "AddUser"
+	AddUserName         = "AddUser"
 )
 
 type AddUser struct {
@@ -229,7 +229,7 @@ func (a AddUser) Apply(s *Snapshot, _ ResourceIDGenerator) error {
 	id := a.Key.UserID()
 
 	return s.AddUser(id, UserConfig{
-		Key: a.Key,
+		Key:      a.Key,
 		Policies: []ResourceID{},
 	})
 }

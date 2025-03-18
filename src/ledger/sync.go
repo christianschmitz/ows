@@ -25,7 +25,7 @@ func (l *Ledger) FindChange(id ChangeSetID) (*ChangeSet, bool) {
 				return &(l.Changes[i-1]), true
 			}
 		} else if i > 0 {
-			if id ==  l.Changes[i].ID() {
+			if id == l.Changes[i].ID() {
 				return &(l.Changes[i]), true
 			}
 		}
@@ -55,8 +55,8 @@ func (l *Ledger) IDChain() *ChangeSetIDChain {
 }
 
 // Removes [until+1:] changes, and revalidates from the beginning.
-func (l *Ledger) Keep(until uint) {
-	l.Changes = l.Changes[0:until+1]
+func (l *Ledger) Keep(until int) {
+	l.Changes = l.Changes[0 : until+1]
 
 	if err := l.Validate(); err != nil {
 		panic(fmt.Errorf("old state of ledger is invalid (%v)", err))
@@ -65,7 +65,7 @@ func (l *Ledger) Keep(until uint) {
 
 // Returns the index of the latest common change set.
 // Returns an error if no intersection is found.
-func (ca *ChangeSetIDChain) Intersect(cb *ChangeSetIDChain) (uint, error) {
+func (ca *ChangeSetIDChain) Intersect(cb *ChangeSetIDChain) (int, error) {
 	n := min(len(ca.IDs), len(cb.IDs))
 
 	for i := 0; i < n; i++ {
@@ -78,10 +78,10 @@ func (ca *ChangeSetIDChain) Intersect(cb *ChangeSetIDChain) (uint, error) {
 			if i == 0 {
 				return 0, errors.New("no common intersection found")
 			} else {
-				return uint(i - 1), nil
+				return i - 1, nil
 			}
 		}
 	}
 
-	return uint(n - 1), nil
+	return n - 1, nil
 }
