@@ -3,6 +3,7 @@ package ledger
 import (
 	"encoding/base64"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/btcsuite/btcutil/bech32"
@@ -78,7 +79,8 @@ func DecodeLedger(bs []byte) (*Ledger, error) {
 				i++
 
 				if err != nil {
-					err = fmt.Errorf("failed to decode ledger change set %d (prev=%s) (%v)", i, snapshot.Head, err)
+					log.Printf("failed to decode ledger change set %d, ignoring (prev=%s) (%v)\n", i, snapshot.Head, err)
+					return
 				}
 
 				if !yield(cs, err) {
@@ -321,6 +323,9 @@ var actionDecoders = map[string]map[string]map[LedgerVersion]actionDecoder{
 		},
 		RemoveGatewayName: {
 			1: newActionDecoder[RemoveGateway](),
+		},
+		RemoveGatewayEndpointName: {
+			1: newActionDecoder[RemoveGatewayEndpoint](),
 		},
 	},
 	NodesCategory: {

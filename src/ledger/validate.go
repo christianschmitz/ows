@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"fmt"
+	"log"
 )
 
 // Instead of passing a plain list of change sets into validateAllChangeSets(),
@@ -60,7 +61,8 @@ func validateAllChangeSets(
 
 	for cs := range genChanges {
 		if err := validateChangeSet(cs, snapshot); err != nil {
-			return nil, fmt.Errorf("failed to validate change set (%v)", err)
+			log.Printf("failed to validate change set, ignoring (%v)", err)
+			break
 		}
 
 		changes = append(changes, *cs)

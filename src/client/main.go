@@ -3,11 +3,10 @@ package main
 import (
 	"errors"
 	"fmt"
-	//"log"
 	"os"
 	"path"
-	//"strconv"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -25,6 +24,7 @@ var (
 	gossipPort uint16 // can't be of type ledger.Port, because cobra flags doesn't accept that
 	isOffline  bool
 	apiPort    uint16 // can't be of type ledger.Port, because cobra flags doesn't accept that
+	onlyIDs    bool   // only display IDs when listing resources (easier when parsing stdout with other tools)
 )
 
 func main() {
@@ -100,29 +100,52 @@ func makeGatewaysCLI() *cobra.Command {
 		Short: "Manage project gateways",
 	}
 
-	gatewaysCLI.AddCommand(&cobra.Command{
+	listGatewaysCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List project gateways",
 		RunE:  handleListGateways,
+	}
+
+	listGatewaysCmd.Flags().BoolVar(&onlyIDs, "only-ids", false, "only show IDs")
+
+	gatewaysCLI.AddCommand(listGatewaysCmd)
+
+	gatewaysCLI.AddCommand(&cobra.Command{
+		Use:   "add",
+		Short: "Create a new gateway",
+		RunE:  handleAddGateway,
 	})
 
-	//gatewaysCLI.AddCommand(&cobra.Command{
-	//	Use:   "add",
-	//	Short: "Create a new gateway",
-	//	Run:   handleAddGateway,
-	//})
+	gatewaysCLI.AddCommand(&cobra.Command{
+		Use:   "remove",
+		Short: "Remove a gateway",
+		RunE:  handleRemoveGateway,
+	})
 
-	//gatewaysCLI.AddCommand(&cobra.Command{
-	//	Use:   "remove",
-	//	Short: "Remove a gateway",
-	//	Run:   handleRemoveGateway,
-	//})
+	endpointsCLI := &cobra.Command{
+		Use:   "endpoints",
+		Short: "Manage gateway endpoints",
+	}
 
-	//gatewaysCLI.AddCommand(&cobra.Command{
-	//	Use:   "add-endpoint",
-	//	Short: "Add an endpoint task to a gateway",
-	//	Run:   handleAddGatewayEndpoint,
-	//})
+	endpointsCLI.AddCommand(&cobra.Command{
+		Use:   "list <gateway-id>",
+		Short: "List gateway endpoints",
+		RunE:  handleListGatewayEndpoints,
+	})
+
+	endpointsCLI.AddCommand(&cobra.Command{
+		Use:   "add <gateway-id> <method> <path> <fn-id>",
+		Short: "Add an endpoint to a gateway",
+		RunE:  handleAddGatewayEndpoint,
+	})
+
+	endpointsCLI.AddCommand(&cobra.Command{
+		Use:   "remove <gateway-id> <method> <path>",
+		Short: "Remove an endpoint from a gateway",
+		RunE:  handleRemoveGatewayEndpoint,
+	})
+
+	gatewaysCLI.AddCommand(endpointsCLI)
 
 	return withProjectFlags(gatewaysCLI)
 }
@@ -182,6 +205,12 @@ func makeLedgerCLI() *cobra.Command {
 		Use:   "list",
 		Short: "List project ledger change set IDs",
 		RunE:  handleListLedgerChangeSets,
+	})
+
+	ledgerCLI.AddCommand(&cobra.Command{
+		Use:   "initial-config",
+		Short: "Show initial ledger config (base64 encoded)",
+		RunE:  handleShowInitialLedgerConfig,
 	})
 
 	return withProjectFlags(ledgerCLI)
@@ -281,60 +310,85 @@ func handleAddFunction(cmd *cobra.Command, args []string) error {
 	}
 
 	action := ledger.AddFunction{
-		Runtime:   "nodejs",
+		Runtime:   runtime,
 		HandlerID: id,
 	}
 
-	cs := state.ledger().NewChangeSet(action)
-	kp := state.keyPair()
+	if err := state.appendActions(action); err != nil {
+		return err
+	}
 
-	sig, err := kp.SignChangeSet(cs)
+	for functionID, fn := range state.ledger().Snapshot.Functions {
+		if fn.Runtime == runtime && fn.HandlerID == id {
+			fmt.Println(functionID)
+		}
+	}
+
+	return nil
+}
+
+func handleAddGateway(cmd *cobra.Command, args []string) error {
+	if err := cobra.ExactArgs(1)(cmd, args); err != nil {
+		return err
+	}
+
+	port, err := strconv.Atoi(args[0])
 	if err != nil {
 		return err
 	}
 
-	cs.Signatures = []ledger.Signature{sig}
+	action := ledger.AddGateway{
+		Port: ledger.Port(uint16(port)),
+	}
 
-	return nc.AppendChangeSet(cs)
+	if err := state.appendActions(action); err != nil {
+		return err
+	}
+
+	// Print the newly added gatewayID
+	for id, gateway := range state.ledger().Snapshot.Gateways {
+		if int(gateway.Port) == port {
+			fmt.Println(id)
+		}
+	}
+
+	return nil
 }
 
-//func handleAddGateway(cmd *cobra.Command, args []string) {
-//	if len(args) != 1 {
-//		log.Fatal("expected 1 arg")
-//	}
-//
-//	port, err := strconv.Atoi(args[0])
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	createChangeSet(ledger.NewAddGateway(port))
-//}
+func handleAddGatewayEndpoint(cmd *cobra.Command, args []string) error {
+	if err := cobra.ExactArgs(4)(cmd, args); err != nil {
+		return err
+	}
 
-//func handleAddGatewayEndpoint(cmd *cobra.Command, args []string) {
-//	if len(args) != 4 {
-//		log.Fatal("expected 4 args")
-//	}
-//
-//	gatewayId := args[0]
-//	if err := ledger.ValidateResourceId(gatewayId, "gateway"); err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	method := args[1]
-//	if method != "GET" && method != "POST" && method != "PUT" && method != "PATCH" && method != "DELETE" {
-//		log.Fatal("invalid method " + method)
-//	}
-//
-//	path := args[2]
-//
-//	taskId := args[3]
-//	if err := ledger.ValidateResourceId(taskId, "task"); err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	createChangeSet(ledger.NewAddGatewayEndpoint(gatewayId, method, path, taskId))
-//}
+	gatewayID := strings.TrimSpace(args[0])
+	if err := ledger.ValidateID(gatewayID, ledger.GatewayIDPrefix); err != nil {
+		return err
+	}
+
+	method := strings.TrimSpace(args[1])
+	if method != "GET" && method != "POST" && method != "PUT" && method != "PATCH" && method != "DELETE" {
+		return fmt.Errorf("invalid method %s", method)
+	}
+
+	path := strings.TrimSpace(args[2])
+	if path == "" {
+		return fmt.Errorf("invalid empty path")
+	}
+
+	fnID := strings.TrimSpace(args[3])
+	if err := ledger.ValidateID(fnID, ledger.FunctionIDPrefix); err != nil {
+		return err
+	}
+
+	action := ledger.AddGatewayEndpoint{
+		GatewayID:  ledger.GatewayID(gatewayID),
+		Method:     method,
+		Path:       path,
+		FunctionID: ledger.FunctionID(fnID),
+	}
+
+	return state.appendActions(action)
+}
 
 func handleCreateNewProject(cmd *cobra.Command, args []string) error {
 	if err := cobra.ExactArgs(3)(cmd, args); err != nil {
@@ -481,35 +535,6 @@ func handleInitClientKey(cmd *cobra.Command, args []string) error {
 	return saveKeyPair(kp)
 }
 
-//func handleInitProject(cmd *cobra.Command, args []string) error {
-//	if err := cobra.ExactArgs(2)(cmd, args); err != nil {
-//		return err
-//	}
-//
-//	//nodePubKey := ledger.ParsePubKey(args[0])
-//	//rawNodeAddress := args[1]
-//
-//	keyPair := getKeyPair()
-//
-//	g := ledger.NewGenesisChangeSet(
-//		ledger.NewAddNode(
-//			args[0],
-//		),
-//	)
-//
-//	// TODO: multi-sig
-//	signature, err := keyPair.SignChangeSet(g)
-//	if err != nil {
-//		return err
-//	}
-//
-//	g.Signatures = append(g.Signatures, signature)
-//
-//	fmt.Println(g.EncodeToString())
-//
-//	return nil
-//}
-
 func handleListAssets(cmd *cobra.Command, args []string) error {
 	if err := cobra.ExactArgs(0)(cmd, args); err != nil {
 		return err
@@ -552,7 +577,35 @@ func handleListGateways(cmd *cobra.Command, args []string) error {
 	l := state.ledger()
 
 	for id, conf := range l.Snapshot.Gateways {
-		fmt.Printf("%s %d\n", id, conf.Port)
+		if onlyIDs {
+			fmt.Println(id)
+		} else {
+			fmt.Printf("%s %d\n", id, conf.Port)
+		}
+	}
+
+	return nil
+}
+
+func handleListGatewayEndpoints(cmd *cobra.Command, args []string) error {
+	if err := cobra.ExactArgs(1)(cmd, args); err != nil {
+		return err
+	}
+
+	gatewayID := args[0]
+	if err := ledger.ValidateID(gatewayID, ledger.GatewayIDPrefix); err != nil {
+		return err
+	}
+
+	l := state.ledger()
+
+	gateway, ok := l.Snapshot.Gateways[ledger.GatewayID(gatewayID)]
+	if !ok {
+		return fmt.Errorf("gateway %s not found", gatewayID)
+	}
+
+	for _, ep := range gateway.Endpoints {
+		fmt.Printf("%s %s %s\n", ep.Method, ep.Path, ep.FunctionID)
 	}
 
 	return nil
@@ -704,18 +757,51 @@ func handleListProjects(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-//func handleRemoveGateway(cmd *cobra.Command, args []string) {
-//	if len(args) != 1 {
-//		log.Fatal("expected 1 arg")
-//	}
-//
-//	gatewayId := args[0]
-//	if err := ledger.ValidateResourceId(gatewayId, "gateway"); err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	createChangeSet(ledger.NewRemoveGateway(gatewayId))
-//}
+func handleRemoveGateway(cmd *cobra.Command, args []string) error {
+	if err := cobra.ExactArgs(1)(cmd, args); err != nil {
+		return err
+	}
+
+	gatewayID := args[0]
+	if err := ledger.ValidateID(gatewayID, ledger.GatewayIDPrefix); err != nil {
+		return err
+	}
+
+	action := ledger.RemoveGateway{
+		ID: ledger.GatewayID(gatewayID),
+	}
+
+	return state.appendActions(action)
+}
+
+func handleRemoveGatewayEndpoint(cmd *cobra.Command, args []string) error {
+	if err := cobra.ExactArgs(3)(cmd, args); err != nil {
+		return err
+	}
+
+	gatewayID := strings.TrimSpace(args[0])
+	if err := ledger.ValidateID(gatewayID, ledger.GatewayIDPrefix); err != nil {
+		return err
+	}
+
+	method := strings.TrimSpace(args[1])
+	if method != "GET" && method != "POST" && method != "PUT" && method != "PATCH" && method != "DELETE" {
+		return fmt.Errorf("invalid method %s", method)
+	}
+
+	path := strings.TrimSpace(args[2])
+	if path == "" {
+		return fmt.Errorf("invalid empty path")
+	}
+
+	action := ledger.RemoveGatewayEndpoint{
+		GatewayID: ledger.GatewayID(gatewayID),
+		Method:    method,
+		Path:      path,
+	}
+
+	return state.appendActions(action)
+}
 
 func handleRemoveProject(cmd *cobra.Command, args []string) error {
 	if err := cobra.ExactArgs(1)(cmd, args); err != nil {
@@ -841,6 +927,24 @@ func handleSetKey(cmd *cobra.Command, args []string) error {
 	return saveKeyPair(kp)
 }
 
+func handleShowInitialLedgerConfig(cmd *cobra.Command, args []string) error {
+	if err := cobra.ExactArgs(0)(cmd, args); err != nil {
+		return err
+	}
+
+	l := state.ledger()
+
+	l0, err := ledger.NewLedger(l.InitialVersion, &(l.Changes[0]))
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("ProjectID: %s\n", l0.ProjectID())
+	fmt.Printf("InitialConfig: %s\n", l0.String())
+
+	return nil
+}
+
 func handleShowKey(cmd *cobra.Command, args []string) error {
 	if err := cobra.ExactArgs(0)(cmd, args); err != nil {
 		return err
@@ -891,35 +995,6 @@ func handleUploadAssets(cmd *cobra.Command, args []string) error {
 		}
 
 		fmt.Printf("%s: %s\n", arg, id)
-	}
-
-	return nil
-}
-
-//func getLedgerPath(genesis *ChangeSet) string {
-//	h := StringifyProjectHash(genesis.Hash())
-//
-//	projectPath := HomeDir + "/" + h
-//
-//	if err := os.MkdirAll(projectPath, os.ModePerm); err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	return makeLedgerPath(projectPath)
-//}
-
-func saveKeyPair(kp *ledger.KeyPair) error {
-	p := state.keyPairPath()
-
-	// Make sure key doesn't already exist
-	if _, err := os.Stat(p); err == nil {
-		return fmt.Errorf("key already exists at %s", p)
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("an error occured while reading existing key at %s (%v)", p, err)
-	}
-
-	if err := kp.Write(p); err != nil {
-		return fmt.Errorf("failure while writing key to %s (%v)", p, err)
 	}
 
 	return nil

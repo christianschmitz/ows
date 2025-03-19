@@ -56,10 +56,11 @@ func (a RemoveFunction) Apply(s *Snapshot, _ ResourceIDGenerator) error {
 }
 
 const (
-	GatewaysCategory       = "gateways"
-	AddGatewayName         = "Add"
-	AddGatewayEndpointName = "AddEndpoint"
-	RemoveGatewayName      = "Remove"
+	GatewaysCategory          = "gateways"
+	AddGatewayName            = "Add"
+	AddGatewayEndpointName    = "AddEndpoint"
+	RemoveGatewayName         = "Remove"
+	RemoveGatewayEndpointName = "RemoveEndpoint"
 )
 
 type AddGateway struct {
@@ -141,6 +142,28 @@ func (a RemoveGateway) Resources() []ResourceID {
 
 func (a RemoveGateway) Apply(s *Snapshot, _ ResourceIDGenerator) error {
 	return s.RemoveGateway(a.ID)
+}
+
+type RemoveGatewayEndpoint struct {
+	GatewayID GatewayID `cbor:"0,keyasint"`
+	Method    string    `cbor:"1,keyasint"`
+	Path      string    `cbor:"2,keyasint"`
+}
+
+func (a RemoveGatewayEndpoint) Category() string {
+	return GatewaysCategory
+}
+
+func (a RemoveGatewayEndpoint) Name() string {
+	return RemoveGatewayEndpointName
+}
+
+func (a RemoveGatewayEndpoint) Resources() []ResourceID {
+	return []ResourceID{a.GatewayID}
+}
+
+func (a RemoveGatewayEndpoint) Apply(s *Snapshot, _ ResourceIDGenerator) error {
+	return s.RemoveGatewayEndpoint(a.GatewayID, a.Method, a.Path)
 }
 
 const (

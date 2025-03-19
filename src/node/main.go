@@ -1,15 +1,13 @@
 package main
 
 import (
-	"fmt"
-	//"log"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/spf13/cobra"
 
-	//"ows/ledger"
 	"ows/network"
 	"ows/resources"
 )
@@ -71,13 +69,13 @@ func handleStartNode(cmd *cobra.Command, args []string) error {
 	state.resources = resources.NewManager(state.assetsPath())
 	state.resources.Sync(l.Snapshot)
 
-	fmt.Printf("Starting OWS node for %s\n", l.ProjectID())
+	log.Printf("starting OWS node for %s\n", l.ProjectID())
 
 	go network.ServeAPI(conf.APIPort, kp, state)
-	fmt.Printf("Hosting node API at https://%s:%d\n", conf.Address, conf.APIPort)
+	log.Printf("hosting node API at https://%s:%d\n", conf.Address, conf.APIPort)
 
-	go network.ServeGossip(conf.GossipPort, state)
-	fmt.Printf("Hosting gossip service at https://%s:%d\n", conf.Address, conf.GossipPort)
+	go network.ServeGossip(conf.GossipPort, kp, state)
+	log.Printf("hosting gossip service at https://%s:%d\n", conf.Address, conf.GossipPort)
 
 	return nil
 }

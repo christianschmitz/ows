@@ -103,12 +103,14 @@ func (m *FunctionManager) remove(id ledger.FunctionID) error {
 }
 
 func (m *FunctionManager) update(id ledger.FunctionID, config ledger.FunctionConfig) error {
-	_, ok := m.Functions[id]
+	fn, ok := m.Functions[id]
 	if !ok {
 		return fmt.Errorf("function %s not found", id)
 	}
 
-	panic("Not yet implemented")
+	fn.Config = config
+
+	return nil
 }
 
 func (m *FunctionManager) Run(id ledger.FunctionID, arg any) (any, error) {
@@ -174,8 +176,7 @@ func (m *FunctionManager) runNodeScriptInDocker(handler string, arg any) (any, e
 
 	startInner := time.Now()
 
-	// run the docker container
-	// TODO: send command to IPC socket instead
+	// send a request to the socker
 	conn, err := net.Dial("unix", "/tmp/"+IPC_SOCKET_NAME)
 	if err != nil {
 		return nil, err
@@ -344,9 +345,7 @@ func initializeDocker() error {
 
 	cmd = exec.Command("docker", "build", "-t", DOCKER_IMAGE_NAME, tmpDir)
 
-	output, err := cmd.Output()
-	if err != nil {
-		fmt.Println("HERE:", output)
+	if _, err := cmd.Output(); err != nil {
 		return err
 	}
 
@@ -415,6 +414,7 @@ func writeNodejsRunner(dst string) error {
 // the runner starts a socket for IPC, which it owns
 // the go process sends the task ID through the socket
 // the runner returns the JSON output
+// the docker process runs with super-user rights, so the socket must be created for all to be able to access
 func writeNodejsRunner2(dst string) error {
 	runnerLines := []string{
 		"const {promises: fs} = require('fs');",
@@ -440,7 +440,7 @@ func writeNodejsRunner2(dst string) error {
 		"            }",
 		"            socket.write(JSON.stringify({success: true, result: output}) + '\\n');",
 		"        } catch (err) {",
-		"            socket.write(JSON.stringify({success: false, error: error.message}) + '\\n')",
+		"            socket.write(JSON.stringify({success: false, error: err.message}) + '\\n')",
 		"        }",
 		"    })",
 		"})",

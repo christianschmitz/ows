@@ -124,6 +124,28 @@ func (s *clientState) projectsDataPath() string {
 	return path.Join(s.appDataPath(), ProjectsDirName)
 }
 
+func (s *clientState) appendActions(actions ...ledger.Action) error {
+	cs := s.ledger().NewChangeSet(actions...)
+	kp := s.keyPair()
+
+	sig, err := kp.SignChangeSet(cs)
+	if err != nil {
+		return err
+	}
+
+	cs.Signatures = []ledger.Signature{sig}
+
+	// Append locally
+	if err := s.AppendChangeSet(cs); err != nil {
+		return err
+	}
+
+	nc := s.newAPIClient().PickNode()
+
+	// Append remotely
+	return nc.AppendChangeSet(cs)
+}
+
 func (s *clientState) currentProjectID() ledger.ProjectID {
 	if s.testDir != "" {
 		l, exists := ledger.EnvLedger()
@@ -272,4 +294,21 @@ func envHomePath(failMessage string) string {
 	}
 
 	return homePath
+}
+
+func saveKeyPair(kp *ledger.KeyPair) error {
+	p := state.keyPairPath()
+
+	// Make sure key doesn't already exist
+	if _, err := os.Stat(p); err == nil {
+		return fmt.Errorf("key already exists at %s", p)
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("an error occured while reading existing key at %s (%v)", p, err)
+	}
+
+	if err := kp.Write(p); err != nil {
+		return fmt.Errorf("failure while writing key to %s (%v)", p, err)
+	}
+
+	return nil
 }

@@ -38,8 +38,8 @@ func ServeAPI(port ledger.Port, kp *ledger.KeyPair, callbacks Callbacks) {
 		Addr:           fmt.Sprintf(":%d", port),
 		Handler:        &apiHandler{callbacks},
 		TLSConfig:      tlsConf,
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
+		ReadTimeout:    20 * time.Second,
+		WriteTimeout:   20 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
 

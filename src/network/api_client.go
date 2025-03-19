@@ -214,6 +214,7 @@ func (c *NodeAPIClient) Head() (ledger.ChangeSetID, error) {
 	return ledger.ChangeSetID(id), nil
 }
 
+// Not responsible for appending locally via c.callbacks.AppendChangeSet()
 func (c *NodeAPIClient) AppendChangeSet(cs *ledger.ChangeSet) error {
 	bs := cs.Encode()
 

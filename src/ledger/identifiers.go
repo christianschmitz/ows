@@ -61,6 +61,37 @@ func ValidateID(id string, expectedPrefix string) error {
 	return nil
 }
 
+func HammingDistance(aID string, bID string) int {
+	aPrefix, aBytes, err := DecodeBech32(aID)
+	if err != nil {
+		panic(err)
+	}
+
+	bPrefix, bBytes, err := DecodeBech32(bID)
+	if err != nil {
+		panic(err)
+	}
+
+	if aPrefix != bPrefix {
+		panic("prefixes aren't the same")
+	}
+
+	if len(aBytes) != len(bBytes) {
+		panic("number of bytes aren't the same")
+	}
+
+	distance := 0
+	for i := 0; i < len(aBytes); i++ {
+		xor := aBytes[i] ^ bBytes[i]
+		// Count the number of set bits in the XOR result
+		for xor > 0 {
+			distance += int(xor & 1)
+			xor >>= 1
+		}
+	}
+	return distance
+}
+
 func newResourceIDGenerator(prev ChangeSetID, actionIndex uint) ResourceIDGenerator {
 	return func(prefix string) ResourceID {
 		return generateResourceId(prefix, prev, actionIndex)

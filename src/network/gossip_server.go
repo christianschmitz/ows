@@ -25,19 +25,36 @@ type encodeableGossip struct {
 }
 
 type gossipHandler struct {
+	kp        *ledger.KeyPair
 	callbacks Callbacks
 }
 
-func ServeGossip(port ledger.Port, callbacks Callbacks) {
+func ServeGossip(port ledger.Port, kp *ledger.KeyPair, callbacks Callbacks) {
+	cert, err := makeTLSCertificate(*kp)
+	if err != nil {
+		panic(err)
+	}
+
+	tlsConf := makeServerTLSConfig(cert, func(k ledger.PublicKey) bool {
+		l := callbacks.Ledger()
+
+		if _, ok := l.Snapshot.Nodes[k.NodeID()]; ok {
+			return true
+		} else {
+			return false
+		}
+	})
+
 	s := &http.Server{
 		Addr:           fmt.Sprintf(":%d", port),
-		Handler:        &gossipHandler{callbacks},
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
+		Handler:        &gossipHandler{kp, callbacks},
+		TLSConfig:      tlsConf,
+		ReadTimeout:    20 * time.Second,
+		WriteTimeout:   20 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
 
-	if err := s.ListenAndServe(); err != nil {
+	if err := s.ListenAndServeTLS("", ""); err != nil {
 		panic(err)
 	}
 }
@@ -93,6 +110,10 @@ func (h *gossipHandler) servePut(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+
+	// spread gossip to other nodes
+	gc := NewGossipClient(h.kp, h.callbacks)
+	gc.Notify(g)
 
 	fmt.Fprintf(w, "")
 }

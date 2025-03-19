@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"slices"
-	//"strconv"
 	"time"
 
 	"ows/ledger"
@@ -51,8 +51,7 @@ func (h *GatewayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			// now run the task
 			resp, err := h.Functions.Run(endpoint.Config.FunctionID, "hello world")
 			if err != nil {
-				fmt.Println(err)
-				http.Error(w, "failed to run task", 500)
+				http.Error(w, fmt.Sprintf("failed to run task (%v)", err), 500)
 				return
 			}
 
@@ -81,12 +80,10 @@ func newGatewaysManager(functions *FunctionManager) *GatewaysManager {
 func (m *GatewaysManager) Sync(gateways map[ledger.GatewayID]ledger.GatewayConfig) error {
 	for id, conf := range gateways {
 		if _, ok := m.Gateways[id]; ok {
-			// update
 			if err := m.update(id, conf); err != nil {
 				return fmt.Errorf("failed to update gateway %s (%v)", id, err)
 			}
 		} else {
-			// add
 			if err := m.add(id, conf); err != nil {
 				return fmt.Errorf("failed to add gateway %s (%v)", id, err)
 			}
@@ -95,7 +92,6 @@ func (m *GatewaysManager) Sync(gateways map[ledger.GatewayID]ledger.GatewayConfi
 
 	for id, _ := range m.Gateways {
 		if _, ok := gateways[id]; !ok {
-			// remove
 			if err := m.remove(id); err != nil {
 				return fmt.Errorf("failed to remove gateway %s (%v)", id, err)
 			}
@@ -129,7 +125,10 @@ func (m *GatewaysManager) add(id ledger.GatewayID, config ledger.GatewayConfig) 
 		Server:  s,
 	}
 
+	// TODO: flexible TLS, using DomainManager + LetsEncrypt
 	go s.ListenAndServe()
+
+	log.Printf("added gateway %s on port %d\n", id, config.Port)
 
 	for _, ep := range config.Endpoints {
 		if err := m.addEndpoint(id, ep); err != nil {
@@ -141,17 +140,19 @@ func (m *GatewaysManager) add(id ledger.GatewayID, config ledger.GatewayConfig) 
 }
 
 func (m *GatewaysManager) remove(id ledger.GatewayID) error {
-	gw, ok := m.Gateways[id]
+	gateway, ok := m.Gateways[id]
 	if !ok {
-		return fmt.Errorf("gateway %s doesn't exist", id)
+		return fmt.Errorf("gateway %s not found", id)
 	}
 
-	err := gw.shutdown()
+	err := gateway.shutdown()
 	if err != nil {
 		return err
 	}
 
 	delete(m.Gateways, id)
+
+	log.Printf("removed gateway %s on port %d\n", id, gateway.Port)
 
 	return nil
 }
@@ -225,6 +226,8 @@ func (m *GatewaysManager) addEndpoint(gatewayID ledger.GatewayID, config ledger.
 	endpoints[relPath] = &Endpoint{
 		Config: config,
 	}
+
+	log.Printf("added endpoint %s %s to gateway %s (port %d)\n", config.Method, config.Path, gatewayID, gateway.Port)
 
 	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"path"
 
 	"ows/ledger"
+	"ows/network"
 	"ows/resources"
 )
 
@@ -51,7 +52,13 @@ func (s *nodeState) AppendChangeSet(cs *ledger.ChangeSet) error {
 		return err
 	}
 
-	// TODO: gossip to other nodes
+	kp := s.keyPair()
+	gc := network.NewGossipClient(kp, s)
+	gc.Notify(&network.Gossip{
+		NodeID:  kp.Public.NodeID(),
+		Head:    l.Head(),
+		Changes: []ledger.ChangeSet{*cs},
+	})
 
 	return nil
 }

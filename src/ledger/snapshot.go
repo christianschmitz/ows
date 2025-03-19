@@ -79,6 +79,8 @@ func (s *Snapshot) AddGatewayEndpoint(id GatewayID, config GatewayEndpointConfig
 
 	gatewayConfig.Endpoints = append(gatewayConfig.Endpoints, config)
 
+	s.Gateways[id] = gatewayConfig
+
 	return nil
 }
 
@@ -114,6 +116,8 @@ func (s *Snapshot) RemoveGatewayEndpoint(id GatewayID, method string, path strin
 	}
 
 	conf.Endpoints = endpoints
+
+	s.Gateways[id] = conf
 
 	return nil
 }
