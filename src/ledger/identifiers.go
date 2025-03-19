@@ -20,13 +20,13 @@ func (l *Ledger) ProjectID() ProjectID {
 
 func (cs *ChangeSet) ID() ChangeSetID {
 	bs := cs.Encode()
-	hash := digestShort(bs)
+	hash := DigestShort(bs)
 
 	return decodeChangeSetID(hash)
 }
 
 func GenerateAssetID(bs []byte) AssetID {
-	hash := digestShort(bs)
+	hash := DigestShort(bs)
 
 	return AssetID(EncodeBech32(AssetIDPrefix, hash))
 }
@@ -42,7 +42,7 @@ func (k PublicKey) NodeID() NodeID {
 }
 
 func (k PublicKey) id(prefix string) ResourceID {
-	hash := digestShort(k)
+	hash := DigestShort(k)
 
 	return ResourceID(EncodeBech32(prefix, hash))
 }
@@ -110,7 +110,7 @@ func generateResourceId(prefix string, prev ChangeSetID, actionIndex uint) Resou
 
 	indexBytes := encodeActionIndexLE(actionIndex)
 
-	hash := digestShort(append(prevBytes, indexBytes...))
+	hash := DigestShort(append(prevBytes, indexBytes...))
 
 	id := EncodeBech32(prefix, hash)
 
@@ -134,7 +134,7 @@ func encodeActionIndexLE(index uint) []byte {
 	return indexBytes
 }
 
-// Number of bytes returned by digestShort().
+// Number of bytes returned by DigestShort().
 const shortDigestSize = 16
 
 // Blake2b is faster than Sha3 and allows generating shorter digests, which are
@@ -143,7 +143,7 @@ const shortDigestSize = 16
 // Hash collision risk of using a short digest is low because each ledger is
 // private and doesn't contain that many entries (unlike a public blockchain).
 // A hash collision in OWS also wouldn't result in any financial risk.
-func digestShort(bs []byte) []byte {
+func DigestShort(bs []byte) []byte {
 	hasher, err := blake2b.New(shortDigestSize, nil)
 	if err != nil {
 		log.Fatal(err)

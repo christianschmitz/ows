@@ -1,15 +1,19 @@
 package network
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/fxamacker/cbor/v2"
 
 	"ows/ledger"
 )
+
+const MaxRecentGossips = 100
 
 // TODO: include events and health status
 type Gossip struct {
@@ -27,6 +31,9 @@ type encodeableGossip struct {
 type gossipHandler struct {
 	kp        *ledger.KeyPair
 	callbacks Callbacks
+
+	mutex  sync.Mutex
+	recent [][]byte // list of hashes of recent gossips
 }
 
 func ServeGossip(port ledger.Port, kp *ledger.KeyPair, callbacks Callbacks) {
@@ -46,8 +53,11 @@ func ServeGossip(port ledger.Port, kp *ledger.KeyPair, callbacks Callbacks) {
 	})
 
 	s := &http.Server{
-		Addr:           fmt.Sprintf(":%d", port),
-		Handler:        &gossipHandler{kp, callbacks},
+		Addr: fmt.Sprintf(":%d", port),
+		Handler: &gossipHandler{
+			kp:        kp,
+			callbacks: callbacks,
+		},
 		TLSConfig:      tlsConf,
 		ReadTimeout:    20 * time.Second,
 		WriteTimeout:   20 * time.Second,
@@ -73,12 +83,45 @@ func (h *gossipHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *gossipHandler) isRecentDuplicate(bodyBytes []byte) bool {
+	if h.recent == nil {
+		h.mutex.Lock()
+		h.recent = make([][]byte, 0, 100)
+		h.mutex.Unlock()
+		return false
+	}
+
+	hash := ledger.DigestShort(bodyBytes)
+
+	for _, bs := range h.recent {
+		if bytes.Equal(hash, bs) {
+			return true
+		}
+	}
+
+	h.mutex.Lock()
+	h.recent = append(h.recent, hash)
+
+	n := len(h.recent)
+	if n > MaxRecentGossips {
+		h.recent = h.recent[n-MaxRecentGossips:]
+	}
+	h.mutex.Unlock()
+
+	return false
+}
+
 func (h *gossipHandler) servePut(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("invalid request body (%v)", err), 400)
+		return
+	}
+
+	if h.isRecentDuplicate(body) {
+		fmt.Fprintf(w, "")
 		return
 	}
 
