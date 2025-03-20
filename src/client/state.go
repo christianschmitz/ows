@@ -66,6 +66,10 @@ func (s *clientState) ListAssets() []ledger.AssetID {
 	return resources.ListAssets(s.assetsPath())
 }
 
+func (s *clientState) OwnKeyPair() *ledger.KeyPair {
+	return s.keyPair()
+}
+
 func (s *clientState) Rollback(p int) error {
 	l := s.ledger()
 

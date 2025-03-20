@@ -266,6 +266,17 @@ func makeNodesCLI() *cobra.Command {
 		RunE:  handleListNodes,
 	})
 
+	addNodeCmd := &cobra.Command{
+		Use: "add <pubkey> <address>",
+		Short: "Add a node",
+		RunE: handleAddNode,
+	}
+
+	addNodeCmd.Flags().Uint16Var(&apiPort, "api-port", 0, "0 results in a random port")
+	addNodeCmd.Flags().Uint16Var(&gossipPort, "gossip-port", 0, "0 results in a random port")
+
+	nodesCLI.AddCommand(addNodeCmd)
+
 	return withProjectFlags(nodesCLI)
 }
 
@@ -390,6 +401,57 @@ func handleAddGatewayEndpoint(cmd *cobra.Command, args []string) error {
 	return state.appendActions(action)
 }
 
+func handleAddNode(cmd *cobra.Command, args []string) error {
+	if err := cobra.ExactArgs(2)(cmd, args); err != nil {
+		return err
+	}
+
+	nodePubKey, err := ledger.ParsePublicKey(args[0])
+	if err != nil {
+		return fmt.Errorf("invalid node public key %s (%v)", args[0], err)
+	}
+
+	// TODO: parse internet address
+	address := args[1]
+
+	if gossipPort != 0 && gossipPort == apiPort {
+		return fmt.Errorf("gossip port can't be equal to api port")
+	}
+
+	if gossipPort == 0 {
+		gp, err := resources.RandomPort()
+		if err != nil {
+			return fmt.Errorf("failed to generate random gossip port (%v)", err)
+		}
+
+		gossipPort = uint16(gp)
+	}
+
+	for apiPort == 0 || apiPort == gossipPort {
+		sp, err := resources.RandomPort()
+		if err != nil {
+			return fmt.Errorf("failed to generate random api port (%v)", err)
+		}
+
+		apiPort = uint16(sp)
+	}
+
+	action := ledger.AddNode{
+		Key:        nodePubKey,
+		Address:    address,
+		GossipPort: ledger.Port(gossipPort),
+		APIPort:    ledger.Port(apiPort),
+	}
+
+	if err := state.appendActions(action); err != nil {
+		return err
+	}
+
+	fmt.Println(nodePubKey.NodeID())
+
+	return nil
+}
+
 func handleCreateNewProject(cmd *cobra.Command, args []string) error {
 	if err := cobra.ExactArgs(3)(cmd, args); err != nil {
 		return err
@@ -429,7 +491,7 @@ func handleCreateNewProject(cmd *cobra.Command, args []string) error {
 	address := args[2]
 
 	if gossipPort != 0 && gossipPort == apiPort {
-		return fmt.Errorf("gossip port can't be equal to sync port")
+		return fmt.Errorf("gossip port can't be equal to api port")
 	}
 
 	if gossipPort == 0 {
@@ -444,7 +506,7 @@ func handleCreateNewProject(cmd *cobra.Command, args []string) error {
 	for apiPort == 0 || apiPort == gossipPort {
 		sp, err := resources.RandomPort()
 		if err != nil {
-			return fmt.Errorf("failed to generate random sync port (%v)", err)
+			return fmt.Errorf("failed to generate random api port (%v)", err)
 		}
 
 		apiPort = uint16(sp)

@@ -11,4 +11,5 @@ type Callbacks interface {
 	Ledger() *ledger.Ledger
 	ListAssets() []ledger.AssetID
 	Rollback(p int) error
+	OwnKeyPair()  *ledger.KeyPair
 }

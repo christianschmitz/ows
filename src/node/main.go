@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"ows/ledger"
 	"ows/network"
 	"ows/resources"
 )
@@ -32,21 +34,6 @@ func main() {
 	quitChannel := make(chan os.Signal, 1)
 	signal.Notify(quitChannel, syscall.SIGINT, syscall.SIGTERM)
 	<-quitChannel
-
-	//l, err := ledger.ReadLedger(true)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//
-	//
-	//
-	//
-	//// TODO: sync from the snapshot instead
-	//l.ApplyAll(rm)
-	//
-	//go ledger.ListenAndServeLedger(l, rm)
-	//
-	//select {}
 }
 
 func handleStartNode(cmd *cobra.Command, args []string) error {
@@ -56,20 +43,34 @@ func handleStartNode(cmd *cobra.Command, args []string) error {
 
 	// Get own node config
 	kp := state.keyPair()
-	id := kp.Public.NodeID()
 	l := state.ledger()
+	id := kp.Public.NodeID()
 
-	// TODO: try to sync from other nodes
-
-	conf, ok := l.Snapshot.Nodes[id]
-	if !ok {
-		panic("own id not found in ledger (TODO: sync from other nodes first)")
-	}
-
+	// Set resource object
+	log.Printf("starting OWS node for %s\n", l.ProjectID())
 	state.resources = resources.NewManager(state.assetsPath())
 	state.resources.Sync(l.Snapshot)
 
-	log.Printf("starting OWS node for %s\n", l.ProjectID())
+	// Sync from other nodes (if other nodes are available)
+	otherNodes := make([]ledger.NodeID, 0)
+
+	for otherID, _ := range l.Snapshot.Nodes {
+		if otherID != id {
+			otherNodes = append(otherNodes, otherID)
+		}
+	}
+	
+	if len(otherNodes) >= 1 {
+		c := network.NewAPIClient(kp, state)
+		if err := c.Sync(); err != nil {
+			panic(fmt.Sprintf("failed to sync upon startup (%v)", err))
+		}
+	}
+
+	conf, ok := l.Snapshot.Nodes[id]
+	if !ok {
+		panic(fmt.Sprintf("own node id %s not found in synced ledger", id))
+	}
 
 	go network.ServeAPI(conf.APIPort, kp, state)
 	log.Printf("hosting node API at https://%s:%d\n", conf.Address, conf.APIPort)

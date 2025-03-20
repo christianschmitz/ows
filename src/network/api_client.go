@@ -31,12 +31,15 @@ func NewAPIClient(kp *ledger.KeyPair, callbacks Callbacks) *APIClient {
 // Returns a node-specific API client
 func (c *APIClient) PickNode() *NodeAPIClient {
 	m := c.callbacks.Ledger().Snapshot.Nodes
+	ownID := c.callbacks.OwnKeyPair().Public.NodeID()
 
-	for _, conf := range m {
-		return NewNodeAPIClient(c.kp, conf.Address, conf.APIPort, c.callbacks)
+	for id, conf := range m {
+		if id != ownID {
+			return NewNodeAPIClient(c.kp, conf.Address, conf.APIPort, c.callbacks)
+		}
 	}
 
-	panic("no nodes found")
+	return nil
 }
 
 // Syncs the local ledger, by performing the following steps:
@@ -48,6 +51,11 @@ func (c *APIClient) PickNode() *NodeAPIClient {
 //  6. Download everything after the intersection
 func (c *APIClient) Sync() error {
 	node := c.PickNode()
+
+	// if no nodes are available to sync from, assume we are already in sync
+	if node == nil {
+		return nil
+	}
 
 	head, err := node.Head()
 	if err != nil {
