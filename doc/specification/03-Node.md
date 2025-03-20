@@ -2,24 +2,24 @@
 
 The node controls the server it is installed on.
 
-The node has the ability to install and configure external software (e.g. *Docker* and *iptables*) [].
+The node should have the ability to install and configure external software (e.g. *Docker* and *iptables*).
 
-Clients communicate with the node through the *sync service*.
+Clients communicate with the node through the OWS *API service*.
 
-Nodes communicate with eachother through the *gossip service*.
+Nodes communicate with each other through the OWS *gossip service*.
 
 Nodes have the following immutable properties:
    - Public key
    - Address
+   - API service port
    - Gossip service port
-   - Sync service port
 
-A node is uniquely identified by its public key, and no other nodes can use the same key-pair. The node resource identifier is formed by hashing the public key bytes with Blake2b-128, and encoding the hash using Bech32 with a prefix (`node`).
+A node is uniquely identified by its public key, and no other nodes can use the same key-pair. The node resource identifier is formed by hashing the public key bytes with Blake2b-128, and encoding the hash using Bech32 with the `node` prefix.
 
 ### Custom HTTPS
 
-The gossip service and sync service potentially handle sensitive data that must be hidden from middle-men.
-HTTPS is a sensible protocol for handling such sensitive data.
+The API service and gossip service potentially handle sensitive data that must be hidden from middle-men.
+It is reasonable to use HTTPS as the communication protocol.
 
 Instead of using certificates signed by a CA, certificates can be derived directly from the Ed25519 keys assigned to each client and node. The HTTPS certificate validation mechanism must then be modified to extract the public keys from client/server certificates, and match those public keys against a whitelist derived from the ledger.
 
@@ -46,7 +46,7 @@ The node is controlled by init.d and runs in the background.
 
 ### Test mode
 
-The node has a test mode for unit testing many of its features locally. While testing, only a local directory is used.
+The node has a test mode for unit testing its features locally. While testing, only a local directory is used.
 
 | Path                                                            | Description               |
 | --------------------------------------------------------------- | ------------------------- |
@@ -57,10 +57,8 @@ The node has a test mode for unit testing many of its features locally. While te
 | `$TEST_DIR/<node-id>/ledger`                                    | Test project ledger       |
 | `$TEST_DIR/<node-id>/logs/<resource-id>/<yyyy/mm/dd-hh:mm:ss>`  | Logs created by resources |
 
-It is helpful to define the following common paths:
+### Asset existence signing
 
-   - `ASSETS_DIR`
-   - `FUNCTIONS_WORKSPACE`
-   - `LEDGER_PATH`
-   - `LOGS_DIR`
-   - `PRIVATE_KEY_PATH`
+Some services depend on assets. For example, serverless functions depend on their handler assets. Though each node should be able to run each serverless function defined in a project, it doesn't need to persist the underlying handler asset.
+
+Nodes are however not able to approve change sets that depend on assets they are unaware of. Therefore asset existence must be communicated between the nodes.

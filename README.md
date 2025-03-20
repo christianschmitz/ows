@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Open Web Services (OWS) is an Open Source alternative for some typical managed services offered by major cloud providers:
+Open Web Services (OWS) is an Open Source alternative for some popular managed services offered by major cloud providers:
 
 | Service              | AWS equivalent   | Azure equivalent | GCS equivalent            | Status |
 | -------------------- | ---------------- | ---------------- | ------------------------- | ------ |
@@ -52,7 +52,7 @@ OWS runs on standard technologies, so it can be used with any cloud provider (or
 
 Nice-to-haves:
    - Instantaneous and atomic deployments
-   - Ability to test complete infrastructure deployment locally
+   - Ability to test complete infrastructure deployments locally
 
 **Why not Terraform?**
 
@@ -66,6 +66,11 @@ OWS is Open Source, with a BSD-3-Clause license.
 The node and client are written in Golang.
 
 **Todo**:
-   - Derivation of change sets from JSON files, allowing OWS nodes to be configured using [Infrastructure as Code (IaC)](https://en.wikipedia.org/wiki/Infrastructure_as_code)
+   - Implement the OWS equivalent of each popular managed service
+   - Ability to derive change sets from JSON files, allowing OWS nodes to be configured using [Infrastructure as Code (IaC)](https://en.wikipedia.org/wiki/Infrastructure_as_code)
    - A React [Single Page Application (SPA)](https://en.wikipedia.org/wiki/Single-page_application) hosted by the client, inspired by the AWS console, and written in Typescript
    - A Typescript library for IaC, inspired by the declarative AWS Typescript CDK
+   - Advanced change set validation, based on git commit signatures or other signatures
+   - The node automatically installs install itself and creates a `/etc/init.d/ows` script when running in detached mode
+   - Client binaries compatible with Windows and MacOS
+   - ...

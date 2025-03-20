@@ -14,9 +14,9 @@ The initial configuration consists primarily of the `SetSyncPort`, `SetGossipPor
 
 The signers of the initial configuration are given unrevokeable root permissions, and can submit any future change set.
 
-The initial configuration can optionally specify the following:
-   - Minimal root user quorum needed for future change sets []
-   - Public blockchain smart contract address containing valid root user public keys []
+The initial configuration can potentially also specify the following:
+   - Minimal root user quorum needed for future change sets
+   - Public blockchain smart contract address containing valid root user public keys
 
 The project's identifier is the Bech32 encoded hash of the initial configuration. For example: `project1lum5n8xamyqappegr2xgkgaeeqnty6xj`.
 
@@ -26,7 +26,7 @@ Each change set must refer to the hash of the previous change set (or hash of th
 
 Change sets contain a list of *actions*. Each action requires specific permissions. A change set is rejected if none of its signatures has a public key with the required permissions.
 
-Usually change sets are only signed by a single client, but multiple signatures can be included to accomodate [group signature](https://en.wikipedia.org/wiki/Group_signature) permissions [].
+Usually change sets are only signed by a single client, but multiple signatures can be included to accomodate potential [group signature](https://en.wikipedia.org/wiki/Group_signature) permissions.
 
 Further change set validation consists of ensuring:
    - Uniqueness of resource names and port numbers
@@ -47,9 +47,7 @@ OWS defines the following ledger actions:
    - AddUser
    - RemoveFunction
    - RemoveGateway
-   - RemoveGatewayEndpoint []
-   - RemoveNode []
-   - RemoveUser []
+   - RemoveGatewayEndpoint
    - ...
 
 ### Resource identifiers
@@ -62,9 +60,9 @@ Every newly created resource is given a deterministic identifier. The identifier
 
 An example of a resource identifier is `gateway1syxs9p6s3497f7we5lzjp3a9csyx4402`.
 
-Unlike AWS's ARNs, OWS resource identifiers don't contain custom names. This way resource names can be changed without impacting the resource identifier. For convenience, the client maps custom resource names to resource identifiers when querying the project state and when submitting change sets [].
+Unlike eg. AWS's ARNs, OWS resource identifiers don't contain custom names. This way resource names can be changed without impacting the resource identifier. For convenience, the client can potentially map custom resource names to resource identifiers when querying the project state and when submitting change sets.
 
-OWS resource identifiers are globally unique, just like AWS's ARN's
+OWS resource identifiers are globally unique.
 
 ### Permissions
 
@@ -77,7 +75,7 @@ A policy statement consists of:
 
 The wildcard symbol (`*`) can be used to match all actions, all actions of a specific category, and/or all resource identifiers.
 
-Actions that create resources, don't operate on existing resources. Such actions are instead considered to operate on a generic global resource, identified by `*`. This means that actions that create resources must also use a wildcard in the resource identifiers list for a positive match.
+Actions that create resources, don't operate on existing resources. Such actions are instead considered to operate on a generic global resource, identified by `*`. This means that actions that create resources must also use a wildcard in the list of resource identifiers for a positive match.
 
 A policy consists of multiple policy statements. To determine the change set action permissions, use the following steps:
    1. The allowed actions are collected in a set
@@ -88,11 +86,11 @@ The order of policy statements in the policy doesn't matter.
 
 ### Upgradeability
 
-It is easy to upgrade the node and client software, but it is not easy to upgrade the ledger once non-backward compatible changes are introduced (e.g. action attributes in a different order).
+It is easy to upgrade the node and client software, but it is not easy to upgrade the ledger once non-backward compatible changes are introduced (e.g. encoding changes).
 
 The latest version of the client and node must be able to validate and operate on current and all past versions of the ledger.
 This means that the ledger can't be decoded all at once, but must be decoded change set per change set.
 
 The top-level ledger CBOR encoding is a list of bytestrings. 
 The first entry is the starting version number of the ledger, as a CBOR encoded int. 
-The second entry the CBOR encoded initial config, the third entry is the first change set etc.
+The second entry the CBOR encoded initial config, the third entry is the CBOR encoded first change set, etc.
