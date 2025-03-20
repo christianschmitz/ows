@@ -4,20 +4,20 @@
 
 Open Web Services (OWS) is an Open Source alternative for some typical managed services offered by major cloud providers:
 
-| Service              | AWS equivalent   | Azure equivalent | Status |
-| -------------------- | ---------------- | ---------------- | ------ |
-| Permissions          | IAM              | RBAC             | MVP    |
-| Serverless compute   | Lambda Functions | Azure Functions  | MVP    |
-| REST APIs            | API Gateway      | API Management   | MVP    |
-| Database tables      | DynamoDB         | Cosmos DB        | Todo   |
-| Storage              | S3               | Blob Storage     | Todo   |
-| Events               | EventBridge      | Event Grid       | Todo   |
-| DNS                  | Route53          | Azure DNS        | Todo   |
-| CDN                  | CloudFront       | Front Door       | Todo   |
-| Workflows            | Step Functions   | Logic Apps       | Todo   |
-| Private repositories | CodeCommit       | Azure Repos      | Todo   |
-| CI/CD                | CodePipeline     | Azure Pipelines  | Todo   |
-| ...                  |                  |                  |        |
+| Service              | AWS equivalent   | Azure equivalent | GCS equivalent            | Status |
+| -------------------- | ---------------- | ---------------- | ------------------------- | ------ |
+| Permissions          | IAM              | RBAC             | IAM                       | MVP    |
+| Serverless compute   | Lambda Functions | Azure Functions  | Cloud Functions           | MVP    |
+| REST APIs            | API Gateway      | API Management   | API Gateway               | MVP    |
+| Database tables      | DynamoDB         | Cosmos DB        | Firestore                 | Todo   |
+| Storage              | S3               | Blob Storage     | Cloud Storage             | Todo   |
+| Events               | EventBridge      | Event Grid       | Eventarc                  | Todo   |
+| DNS                  | Route53          | Azure DNS        | Cloud DNS                 | Todo   |
+| CDN                  | CloudFront       | Front Door       | Cloud CDN                 | Todo   |
+| Workflows            | Step Functions   | Logic Apps       | Workflows                 | Todo   |
+| Private repositories | CodeCommit       | Azure Repos      | Cloud Source Repositories | Todo   |
+| CI/CD                | CodePipeline     | Azure Pipelines  | Cloud Build               | Todo   |
+| ...                  |                  |                  |                           |        |
 
 To achieve high up-times and resilience, OWS uses a **P2P network of private servers**.
 Each participating server runs the OWS *node*, which hosts the managed services and syncs server state with peers. **All peers are equal** and never assume master roles.
