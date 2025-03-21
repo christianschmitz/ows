@@ -46,7 +46,7 @@ But using them comes with the following disadvantages:
    - High-end servers are more expensive than smaller competitors
    - Vendor lock-in: using vendor-specific managed services makes migrating to another cloud provider very difficult
 
-The latter disadvantage has recently been amplified by global political uncertainty, especially for companies using datacenters abroad.
+The latter disadvantage has recently been amplified by global political uncertainty, especially for companies using foreign datacenters.
 
 OWS runs on standard technologies, so it can be used with any cloud provider (or any combination of cloud providers). Migrating an OWS project to another cloud provider is seemless.
 
