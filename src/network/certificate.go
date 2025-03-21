@@ -66,9 +66,9 @@ func makeVerifyPeerCertificate(isValidPeer func(k ledger.PublicKey) bool) func(r
 			return fmt.Errorf("failed to parse peer certificate (%v)", err)
 		}
 
-		pk, ok := peerCert.PublicKey.(ed25519.PublicKey)
-		if !ok {
-			return fmt.Errorf("peer certificate is not using Ed25519")
+		pk, err := extractPeerPublicKey(peerCert)
+		if err != nil {
+			return err
 		}
 
 		if !isValidPeer(ledger.PublicKey(pk)) {
@@ -77,4 +77,13 @@ func makeVerifyPeerCertificate(isValidPeer func(k ledger.PublicKey) bool) func(r
 
 		return nil
 	}
+}
+
+func extractPeerPublicKey(cert *x509.Certificate) (ledger.PublicKey, error) {
+	key, ok := cert.PublicKey.(ed25519.PublicKey)
+	if !ok {
+		return nil, fmt.Errorf("peer certificate is not using Ed25519")
+	}
+
+	return ledger.PublicKey(key), nil
 }

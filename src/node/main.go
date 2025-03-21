@@ -59,7 +59,7 @@ func handleStartNode(cmd *cobra.Command, args []string) error {
 			otherNodes = append(otherNodes, otherID)
 		}
 	}
-	
+
 	if len(otherNodes) >= 1 {
 		c := network.NewAPIClient(kp, state)
 		if err := c.Sync(); err != nil {

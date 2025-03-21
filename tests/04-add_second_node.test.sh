@@ -37,7 +37,6 @@ test() {
 
     # 6. Add a second node to the ledger
     local node_id=$(add_node $client $project $node2_public_key $node2_api_port $node2_gossip_port)
-    echo $node_id
 
     # 7. Start the second node
     start_node $node2_private_key $project

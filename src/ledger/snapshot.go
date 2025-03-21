@@ -180,6 +180,16 @@ func (s *Snapshot) addRootUsers(users ...PublicKey) {
 	}
 }
 
+func (s *Snapshot) NodeIDs() []NodeID {
+	nodeIDs := make([]NodeID, 0, len(s.Nodes))
+
+	for id, _ := range s.Nodes {
+		nodeIDs = append(nodeIDs, id)
+	}
+
+	return nodeIDs
+}
+
 func (s *Snapshot) Ports() map[Port]ResourceID {
 	ports := map[Port]ResourceID{}
 

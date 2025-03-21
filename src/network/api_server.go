@@ -157,6 +157,8 @@ func (h *apiHandler) servePostChangeSet(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *apiHandler) servePutAsset(w http.ResponseWriter, r *http.Request) {
+	isFromNode := h.hasNodeCertificate(r)
+
 	defer r.Body.Close()
 
 	body, err := io.ReadAll(r.Body)
@@ -165,7 +167,7 @@ func (h *apiHandler) servePutAsset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := h.callbacks.AddAsset(body)
+	id, err := h.callbacks.AddAsset(body, isFromNode)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("%v", err), 500)
 		return
@@ -173,4 +175,31 @@ func (h *apiHandler) servePutAsset(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	fmt.Fprintf(w, "%s", id)
+}
+
+func (h *apiHandler) hasNodeCertificate(r *http.Request) bool {
+	if r.TLS == nil {
+		return false
+	}
+
+	if r.TLS.PeerCertificates == nil {
+		return false
+	}
+
+	if len(r.TLS.PeerCertificates) == 0 {
+		return false
+	}
+
+	for _, peerCert := range r.TLS.PeerCertificates {
+		key, err := extractPeerPublicKey(peerCert)
+		if err != nil {
+			continue
+		}
+
+		if _, ok := h.callbacks.Ledger().Snapshot.Nodes[key.NodeID()]; ok {
+			return true
+		}
+	}
+
+	return false
 }

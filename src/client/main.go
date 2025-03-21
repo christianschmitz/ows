@@ -267,9 +267,9 @@ func makeNodesCLI() *cobra.Command {
 	})
 
 	addNodeCmd := &cobra.Command{
-		Use: "add <pubkey> <address>",
+		Use:   "add <pubkey> <address>",
 		Short: "Add a node",
-		RunE: handleAddNode,
+		RunE:  handleAddNode,
 	}
 
 	addNodeCmd.Flags().Uint16Var(&apiPort, "api-port", 0, "0 results in a random port")

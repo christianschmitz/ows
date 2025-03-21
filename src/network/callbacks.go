@@ -6,10 +6,10 @@ import (
 
 // Implemented by nodeState
 type Callbacks interface {
-	AddAsset(bs []byte) (ledger.AssetID, error)
+	AddAsset(bs []byte, isFromNode bool) (ledger.AssetID, error)
 	AppendChangeSet(cs *ledger.ChangeSet) error
 	Ledger() *ledger.Ledger
 	ListAssets() []ledger.AssetID
 	Rollback(p int) error
-	OwnKeyPair()  *ledger.KeyPair
+	OwnKeyPair() *ledger.KeyPair
 }

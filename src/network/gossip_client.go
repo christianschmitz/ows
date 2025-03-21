@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"sort"
 
 	"ows/ledger"
 )
@@ -42,11 +41,12 @@ func NewGossipClient(kp *ledger.KeyPair, callbacks Callbacks) *GossipClient {
 }
 
 func (c *GossipClient) Notify(g *Gossip) {
-	initiator := g.NodeID
-	dst := c.oneToClosest(initiator)
-
 	l := c.callbacks.Ledger()
 	s := l.Snapshot
+
+	initiator := g.NodeID
+	dst := OneToClosest(l, c.kp.Public.NodeID(), initiator)
+
 	bs := g.Encode()
 
 	for _, id := range dst {
@@ -72,93 +72,4 @@ func (c *GossipClient) Notify(g *Gossip) {
 	}
 
 	return
-}
-
-// the most basic topology: one-to-all
-func (c *GossipClient) oneToAll(initiator ledger.NodeID) []ledger.NodeID {
-	currentNodeID := c.kp.Public.NodeID()
-
-	dst := make([]ledger.NodeID, 0)
-
-	l := c.callbacks.Ledger()
-	s := l.Snapshot
-
-	for id, _ := range s.Nodes {
-		if initiator == currentNodeID && id != initiator {
-			dst = append(dst, id)
-		}
-	}
-
-	return dst
-}
-
-const closest = 10
-const overlap = 3
-
-// a more robust topology: one to ten closest,
-func (c *GossipClient) oneToClosest(initiator ledger.NodeID) []ledger.NodeID {
-	l := c.callbacks.Ledger()
-	snapshot := l.Snapshot
-
-	// collect all NodeIDs, ignoring initiator
-	all := []ledger.NodeID{}
-	for id, _ := range snapshot.Nodes {
-		if id != initiator {
-			all = append(all, id)
-		}
-	}
-
-	sendTo := map[ledger.NodeID][]ledger.NodeID{}
-	receiveFrom := map[ledger.NodeID][]ledger.NodeID{}
-
-	stack := []ledger.NodeID{initiator}
-
-	for len(stack) > 0 {
-		current := stack[0]
-		stack = stack[1:]
-
-		// if current has already been treated: continue
-		if _, ok := sendTo[current]; ok {
-			continue
-		}
-
-		dst := []ledger.NodeID{}
-
-		allCpy := all[:]
-
-		sort.Slice(allCpy, func(i, j int) bool {
-			di := ledger.HammingDistance(string(current), string(allCpy[i]))
-			dj := ledger.HammingDistance(string(current), string(allCpy[j]))
-
-			if di == dj {
-				return allCpy[i] < allCpy[j]
-			} else {
-				return di < dj
-			}
-		})
-
-		for _, other := range allCpy {
-			if len(dst) >= closest {
-				break
-			}
-
-			if rcv, ok := receiveFrom[other]; ok && len(rcv) >= overlap {
-				continue
-			}
-
-			dst = append(dst, other)
-
-			if rcv, ok := receiveFrom[other]; ok {
-				receiveFrom[other] = append(rcv, current)
-			} else {
-				receiveFrom[other] = []ledger.NodeID{current}
-			}
-		}
-
-		sendTo[current] = dst
-
-		stack = append(stack, dst...)
-	}
-
-	return sendTo[c.kp.Public.NodeID()]
 }

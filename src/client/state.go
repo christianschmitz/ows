@@ -40,7 +40,7 @@ type clientState struct {
 	cachedLedger  *ledger.Ledger
 }
 
-func (s *clientState) AddAsset(bs []byte) (ledger.AssetID, error) {
+func (s *clientState) AddAsset(bs []byte, _ bool) (ledger.AssetID, error) {
 	return resources.AddAsset(s.assetsPath(), bs)
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path"
 
@@ -31,8 +32,29 @@ type nodeState struct {
 	resources *resources.Manager
 }
 
-func (s *nodeState) AddAsset(bs []byte) (ledger.AssetID, error) {
-	return s.resources.Assets.Add(bs)
+func (s *nodeState) AddAsset(bs []byte, isFromNode bool) (ledger.AssetID, error) {
+	assetID := ledger.GenerateAssetID(bs)
+
+	closestNodes := network.ClosestNodes(s.Ledger(), string(assetID), 3)
+
+	for _, nodeID := range closestNodes {
+		if nodeID == s.ID() {
+			if _, err := s.resources.Assets.Add(bs); err != nil {
+				log.Println("failed to add asset localy (%v)", err)
+			}
+		} else {
+			c, err := s.newNodeAPIClient(nodeID)
+			if err != nil {
+				return assetID, err
+			}
+
+			if _, err := c.UploadAsset(bs); err != nil {
+				return assetID, err
+			}
+		}
+	}
+
+	return assetID, nil
 }
 
 // Append the change set to the ledger, then write the ledger to disk, and
@@ -61,6 +83,10 @@ func (s *nodeState) AppendChangeSet(cs *ledger.ChangeSet) error {
 	})
 
 	return nil
+}
+
+func (s *nodeState) ID() ledger.NodeID {
+	return s.keyPair().Public.NodeID()
 }
 
 func (s *nodeState) Ledger() *ledger.Ledger {
@@ -224,4 +250,13 @@ func (s *nodeState) ledger() *ledger.Ledger {
 	s.cachedLedger = l
 
 	return l
+}
+
+func (s *nodeState) newNodeAPIClient(nodeID ledger.NodeID) (*network.NodeAPIClient, error) {
+	conf, ok := s.ledger().Snapshot.Nodes[nodeID]
+	if !ok {
+		return nil, fmt.Errorf("node %s not found", nodeID)
+	}
+
+	return network.NewNodeAPIClient(s.keyPair(), conf.Address, conf.APIPort, s), nil
 }
