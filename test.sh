@@ -12,5 +12,7 @@ for test_script in $tests; do
     bash $test_script
 done
 
+echo "Cleaning up"
+
 cd ../
 ./clean.sh
