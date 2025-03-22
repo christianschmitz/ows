@@ -62,7 +62,7 @@ func OneToClosest(l *ledger.Ledger, current, initiator ledger.NodeID) []ledger.N
 			}
 		}
 
-		sortNodesByDistanceToTarget(allCpy, string(current))
+		SortNodesByDistanceToTarget(allCpy, string(current))
 
 		for _, other := range allCpy {
 			if len(dst) >= closest {
@@ -90,10 +90,8 @@ func OneToClosest(l *ledger.Ledger, current, initiator ledger.NodeID) []ledger.N
 	return sendTo[current]
 }
 
-func ClosestNodes(l *ledger.Ledger, resourceID string, n int) []ledger.NodeID {
-	nodeIDs := l.Snapshot.NodeIDs()
-
-	sortNodesByDistanceToTarget(nodeIDs, resourceID)
+func ClosestNodes(nodeIDs []ledger.NodeID, resourceID string, n int) []ledger.NodeID {
+	SortNodesByDistanceToTarget(nodeIDs, resourceID)
 
 	if len(nodeIDs) > n {
 		return nodeIDs[0:n]
@@ -102,7 +100,7 @@ func ClosestNodes(l *ledger.Ledger, resourceID string, n int) []ledger.NodeID {
 	}
 }
 
-func sortNodesByDistanceToTarget(ids []ledger.NodeID, target string) {
+func SortNodesByDistanceToTarget(ids []ledger.NodeID, target string) {
 	sort.Slice(ids, func(i, j int) bool {
 		di := ledger.HammingDistance(target, string(ids[i]))
 		dj := ledger.HammingDistance(target, string(ids[j]))

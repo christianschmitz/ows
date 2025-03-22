@@ -44,6 +44,10 @@ func (s *clientState) AddAsset(bs []byte, _ bool) (ledger.AssetID, error) {
 	return resources.AddAsset(s.assetsPath(), bs)
 }
 
+func (s *clientState) GetAsset(id ledger.AssetID) ([]byte, error) {
+	return resources.GetAsset(s.assetsPath(), id)
+}
+
 func (s *clientState) AppendChangeSet(cs *ledger.ChangeSet) error {
 	l := s.ledger()
 

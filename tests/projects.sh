@@ -5,7 +5,6 @@ TEST_DIR=""
 # Don't run in a subshell, so trap is triggered by top-level EXIT
 init_test_dir() {
     TEST_DIR=$(mktemp -d)
-
     trap_add "rm -fr $TEST_DIR" EXIT
 }
 

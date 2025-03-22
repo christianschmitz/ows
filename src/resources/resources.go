@@ -11,11 +11,11 @@ type Manager struct {
 	Nodes     *NodeManager
 }
 
-func NewManager(assetsDir string) *Manager {
-	assets := newAssetManager(assetsDir)
+func NewManager(current *ledger.KeyPair, assetsDir string) *Manager {
+	nodes := newNodeManager(current)
+	assets := newAssetManager(assetsDir, nodes)
 	functions := newFunctionManager(assets)
 	gateways := newGatewaysManager(functions)
-	nodes := newNodeManager()
 
 	return &Manager{
 		Assets:    assets,
@@ -40,28 +40,3 @@ func (m *Manager) Sync(snapshot *ledger.Snapshot) error {
 
 	return nil
 }
-
-//func (m *Manager) AddNode(id string, addr string) error {
-//	return m.Compute.Add(id, addr)
-//}
-//
-//func (m *Manager) AddGateway(id string, port int) error {
-//	return m.Gateways.Add(id, port)
-//}
-//
-//func (m *Manager) RemoveGateway(id string) error {
-//	return m.Gateways.Remove(id)
-//}
-//
-//func (m *Manager) AddGatewayEndpoint(gatewayId string, method string, relPath string, taskId string) error {
-//	return m.Gateways.AddEndpoint(gatewayId, method, relPath, taskId)
-//}
-//
-//func (m *Manager) AddTask(id string, handler string) error {
-//	return m.Tasks.Add(id, handler)
-//}
-//
-//func (m *Manager) RemoveTask(id string) error {
-//	return m.Tasks.Remove(id)
-//}
-//

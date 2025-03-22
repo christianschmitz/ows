@@ -37,7 +37,8 @@ test() {
     # 6. Sync the client with the node and return the change set IDs
     local id_chain=$(ledger_summary $client_private_key $initial_config)
 
-    assert_bech32_equals $project_id $id_chain "project id bech32 payload equals first change set id bech32 payload"
+    assert_bech32_equals $project_id $id_chain \
+        "project id bech32 payload equals first change set id bech32 payload"
 }
 
 test

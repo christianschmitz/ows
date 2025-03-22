@@ -35,7 +35,7 @@ type nodeState struct {
 func (s *nodeState) AddAsset(bs []byte, isFromNode bool) (ledger.AssetID, error) {
 	assetID := ledger.GenerateAssetID(bs)
 
-	closestNodes := network.ClosestNodes(s.Ledger(), string(assetID), 3)
+	closestNodes := network.ClosestNodes(s.Ledger().Snapshot.NodeIDs(), string(assetID), 3)
 
 	for _, nodeID := range closestNodes {
 		if nodeID == s.ID() {
@@ -55,6 +55,10 @@ func (s *nodeState) AddAsset(bs []byte, isFromNode bool) (ledger.AssetID, error)
 	}
 
 	return assetID, nil
+}
+
+func (s *nodeState) GetAsset(id ledger.AssetID) ([]byte, error) {
+	return s.resources.Assets.Get(id)
 }
 
 // Append the change set to the ledger, then write the ledger to disk, and
@@ -253,10 +257,17 @@ func (s *nodeState) ledger() *ledger.Ledger {
 }
 
 func (s *nodeState) newNodeAPIClient(nodeID ledger.NodeID) (*network.NodeAPIClient, error) {
-	conf, ok := s.ledger().Snapshot.Nodes[nodeID]
+	allNodes := s.ledger().Snapshot.Nodes
+
+	conf, ok := allNodes[nodeID]
 	if !ok {
 		return nil, fmt.Errorf("node %s not found", nodeID)
 	}
 
-	return network.NewNodeAPIClient(s.keyPair(), conf.Address, conf.APIPort, s), nil
+	return network.NewNodeAPIClient(
+		s.keyPair(),
+		conf.Address,
+		conf.APIPort,
+		allNodes,
+	), nil
 }

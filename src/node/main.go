@@ -48,7 +48,7 @@ func handleStartNode(cmd *cobra.Command, args []string) error {
 
 	// Set resource object
 	log.Printf("starting OWS node for %s\n", l.ProjectID())
-	state.resources = resources.NewManager(state.assetsPath())
+	state.resources = resources.NewManager(kp, state.assetsPath())
 	state.resources.Sync(l.Snapshot)
 
 	// Sync from other nodes (if other nodes are available)

@@ -2,9 +2,12 @@ package network
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -49,17 +52,24 @@ func ServeAPI(port ledger.Port, kp *ledger.KeyPair, callbacks Callbacks) {
 }
 
 func (h *apiHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// TODO: only show this with a high verbosity level
+	log.Printf("api %s %s\n", r.Method, r.URL.Path)
+
 	switch r.Method {
 	case "GET":
 		switch r.URL.Path {
 		case "/":
 			h.serveChangeSetIDChain(w, r)
 		case "/assets":
-			h.serveAssetList(w, r)
+			h.serveGetAssetList(w, r)
 		case "/head":
 			h.serveHead(w, r)
 		default:
-			h.serveChangeSet(w, r)
+			if strings.HasPrefix(r.URL.Path, "/assets/") {
+				h.serveGetAsset(w, r)
+			} else {
+				h.serveChangeSet(w, r)
+			}
 		}
 	case "POST":
 		switch r.URL.Path {
@@ -80,7 +90,31 @@ func (h *apiHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *apiHandler) serveAssetList(w http.ResponseWriter, r *http.Request) {
+func (h *apiHandler) serveGetAsset(w http.ResponseWriter, r *http.Request) {
+	id := strings.Trim(r.URL.Path[len("/assets/"):], "/")
+
+	if err := ledger.ValidateID(id, ledger.AssetIDPrefix); err != nil {
+		log.Printf("invalid asset id %s (%v)\n", id, err)
+		http.Error(w, fmt.Sprintf("invalid asset id %s (%v)", id, err), 400)
+		return
+	}
+
+	bs, err := h.callbacks.GetAsset(ledger.AssetID(id))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			log.Printf("requested asset %s not found\n", id)
+			http.Error(w, fmt.Sprintf("asset %s not found", id), 404)
+		} else {
+			log.Printf("internal failure in serveGetAsset (%v)\n", err)
+			http.Error(w, fmt.Sprintf("%v", err), 500)
+		}
+	} else {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Write(bs)
+	}
+}
+
+func (h *apiHandler) serveGetAssetList(w http.ResponseWriter, r *http.Request) {
 	assets := h.callbacks.ListAssets()
 
 	bs, err := json.Marshal(assets)

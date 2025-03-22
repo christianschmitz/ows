@@ -11,3 +11,6 @@ tests=$(ls ./*.test.sh)
 for test_script in $tests; do
     bash $test_script
 done
+
+cd ../
+./clean.sh

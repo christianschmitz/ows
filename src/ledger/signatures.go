@@ -225,16 +225,17 @@ func (k PrivateKey) KeyPair() *KeyPair {
 	}
 }
 
+// Returns hex encoded bytes, because hex is easier to use as a cmd line arg than base64
 func (k PrivateKey) String() string {
 	seed := []byte(k)[0:32]
 
-	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(seed)
+	return hex.EncodeToString(seed)
 }
 
 func (k PublicKey) String() string {
 	bs := []byte(k)
 
-	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(bs)
+	return hex.EncodeToString(bs)
 }
 
 func (s Signature) Verify(message []byte) bool {

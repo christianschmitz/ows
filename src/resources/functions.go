@@ -70,17 +70,23 @@ func (m *FunctionManager) Sync(functions map[ledger.FunctionID]ledger.FunctionCo
 }
 
 func (m *FunctionManager) add(id ledger.FunctionID, config ledger.FunctionConfig) error {
+	log.Printf("adding function %s with handler %s...\n", id, config.HandlerID)
+
 	if _, ok := m.Functions[id]; ok {
 		return errors.New("function added before")
 	}
 
 	if !m.dockerInitialized {
-		if err := initializeDocker(); err != nil {
-			fmt.Println("failed to initialize docker", err)
+		if err := m.initializeDocker(); err != nil {
+			log.Println("failed to initialize docker", err)
 			return err
 		}
 
 		m.dockerInitialized = true
+	}
+
+	if err := m.Assets.AssertExists(config.HandlerID); err != nil {
+		return err
 	}
 
 	m.Functions[id] = &Function{
@@ -230,34 +236,6 @@ func (m *FunctionManager) runNodeScriptInDocker(handler string, arg any) (any, e
 	} else {
 		return nil, errors.New("unexpected output format")
 	}
-
-	//cmd := exec.Command("docker", "exec", DOCKER_CONTAINER_NAME, "node", "/app/" + NODEJS_RUNNER_NAME, uuid)
-	//
-	//var stderr bytes.Buffer
-	//cmd.Stderr = &stderr
-	//
-	//// TODO: write stdout and stderr to logs
-	//if output, err := cmd.Output(); err != nil {
-	//	fmt.Println(err)
-	//	fmt.Println("Stderr: ", stderr.String())
-	//	fmt.Println("Output: ", output)
-	//	return nil, err
-	//}
-	//
-	//
-	//
-	//
-	//fmt.Println("done running, reading output")
-	//
-	//output, err := readJson(tmpDir + "/" + NODEJS_OUTPUT_NAME)
-	//if err != nil {
-	//	fmt.Println("failed to read output file")
-	//	return nil, err
-	//}
-	//
-	//log.Printf("task %s took %s (inner), %s (outer)\n", uuid, durationInner, time.Since(start))
-	//
-	//return output, nil
 }
 
 func (m *FunctionManager) copyAsset(assetId string, dst string) error {
@@ -304,9 +282,14 @@ func readJson(src string) (any, error) {
 	return output, nil
 }
 
-func initializeDocker() error {
+// TODO: take runtime into account
+func (m *FunctionManager) dockerContainerName() string {
+	return DOCKER_CONTAINER_NAME + string(m.Assets.Nodes.CurrentNodeID())
+}
+
+func (m *FunctionManager) initializeDocker() error {
 	// check if container is already running first
-	cmd := exec.Command("docker", "ps", "-q", "-f", "name="+DOCKER_CONTAINER_NAME)
+	cmd := exec.Command("docker", "ps", "-q", "-f", "name="+m.dockerContainerName())
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	if err := cmd.Run(); err != nil {
@@ -315,15 +298,15 @@ func initializeDocker() error {
 	}
 
 	if out.Len() != 0 {
-		if err := exec.Command("docker", "stop", DOCKER_CONTAINER_NAME).Run(); err != nil {
+		if err := exec.Command("docker", "stop", m.dockerContainerName()).Run(); err != nil {
 			return err
 		}
 	}
 
-	fmt.Println("Creating and starting nodejs runner...")
+	log.Println("creating and starting nodejs runner...")
 
 	// make sure the previous container (which might be stopped), is completely removed
-	exec.Command("docker", "container", "rm", "-f", DOCKER_CONTAINER_NAME).Run()
+	exec.Command("docker", "container", "rm", "-f", m.dockerContainerName()).Run()
 
 	// make sure Docker image exists
 	tmpDir, err := makeTmpDir()
@@ -341,7 +324,7 @@ func initializeDocker() error {
 		return err
 	}
 
-	fmt.Println("Created docker files")
+	log.Println("created docker files")
 
 	cmd = exec.Command("docker", "build", "-t", DOCKER_IMAGE_NAME, tmpDir)
 
@@ -349,7 +332,7 @@ func initializeDocker() error {
 		return err
 	}
 
-	cmd = exec.Command("docker", "run", "-d", "--name", DOCKER_CONTAINER_NAME, "-v", "/tmp:/data", DOCKER_IMAGE_NAME)
+	cmd = exec.Command("docker", "run", "-d", "--name", m.dockerContainerName(), "-v", "/tmp:/data", DOCKER_IMAGE_NAME)
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

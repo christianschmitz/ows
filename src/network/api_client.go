@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	"ows/ledger"
 )
@@ -35,7 +36,7 @@ func (c *APIClient) PickNode() *NodeAPIClient {
 
 	for id, conf := range m {
 		if id != ownID {
-			return NewNodeAPIClient(c.kp, conf.Address, conf.APIPort, c.callbacks)
+			return NewNodeAPIClient(c.kp, conf.Address, conf.APIPort, m)
 		}
 	}
 
@@ -102,16 +103,19 @@ func (c *APIClient) Sync() error {
 	return nil
 }
 
-func NewNodeAPIClient(kp *ledger.KeyPair, address string, port ledger.Port, callbacks Callbacks) *NodeAPIClient {
+func NewNodeAPIClient[T any](
+	kp *ledger.KeyPair,
+	address string,
+	port ledger.Port,
+	allNodes map[ledger.NodeID]T,
+) *NodeAPIClient {
 	cert, err := makeTLSCertificate(*kp)
 	if err != nil {
 		panic(err)
 	}
 
 	tlsConf := makeClientTLSConfig(cert, func(peer ledger.PublicKey) bool {
-		l := callbacks.Ledger()
-
-		if _, ok := l.Snapshot.Nodes[peer.NodeID()]; ok {
+		if _, ok := allNodes[peer.NodeID()]; ok {
 			return true
 		} else {
 			return false
@@ -125,6 +129,27 @@ func NewNodeAPIClient(kp *ledger.KeyPair, address string, port ledger.Port, call
 	}
 
 	return &NodeAPIClient{httpClient, address, port}
+}
+
+// Returns os.ErrNotExist if asset doesn't exist on remote node
+func (c *NodeAPIClient) Asset(id ledger.AssetID) ([]byte, error) {
+	resp, err := handleResponse(c.httpClient.Get(c.url(fmt.Sprintf("assets/%s", id))))
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode == 404 {
+		return nil, fmt.Errorf("asset %s not found on remote node (%w)", id, os.ErrNotExist)
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
 }
 
 func (c *NodeAPIClient) Assets() ([]ledger.AssetID, error) {

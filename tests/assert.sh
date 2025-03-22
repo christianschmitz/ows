@@ -17,6 +17,22 @@ assert_equals() {
     fi  
 }
 
+assert_line_count_equals() {
+    local literal_cmd=$1
+    local expected_count=$2
+    local message=$3
+
+    local actual_count=$(eval "$literal_cmd" | wc -l)
+
+    if [[ $actual_count -ne $expected_count ]]; then
+        echo "[$TEST_NAME] $message [FAIL]"
+        echo "[$TEST_NAME]   expected=$expected_count, actual=$actual_count"
+        exit 1
+    else
+        echo "[$TEST_NAME] $message [OK]"
+    fi
+}
+
 # Ignores the prefix
 assert_bech32_equals() {
     local actual=$1

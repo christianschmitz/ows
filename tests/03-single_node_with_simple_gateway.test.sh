@@ -39,7 +39,7 @@ test() {
 
     assert_equals $gateway $all_gateways "a single gateway is created"
 
-    # 8. Create a simple a CommonJS function
+    # 8. Create a simple CommonJS function
     local handler_path="${TEST_DIR}/index.cjs"
     echo 'module.exports = function handler() {return "Hello World"};' > $handler_path
     local asset_id=$(upload_asset $client $project $handler_path)
@@ -54,7 +54,8 @@ test() {
     # 11. Query the newly created endpoint
     response=$(curl -sS -o - "http://127.0.0.1:${gateway_port}/")
 
-    assert_equals "$response" '"Hello World"' "gateway endpoint responds correctly" 
+    assert_equals "$response" '"Hello World"' \
+        "gateway endpoint responds correctly" 
 }
 
 test

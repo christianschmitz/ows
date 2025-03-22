@@ -1,6 +1,7 @@
 . ./assert.sh
 
 NODE_PID=""
+NODE_COUNT=0
 
 # Add node with address 127.0.0.1
 add_node() {
@@ -13,7 +14,7 @@ add_node() {
     OWS_PRIVATE_KEY=$client_private_key \
     OWS_INITIAL_CONFIG=$initial_config \
     ../dist/ows \
-        nodes add $node_public_key 127.0.0.1 \
+        nodes add "$node_public_key" 127.0.0.1 \
         --api-port $api_port \
         --gossip-port $gossip_port \
         --test-dir $TEST_DIR
@@ -28,8 +29,9 @@ start_node() {
 
     OWS_PRIVATE_KEY=$node_private_key \
     OWS_INITIAL_CONFIG=$initial_config \
-    nohup ../dist/ows-node --test-dir $TEST_DIR > $log_file 2>&1 &
+    nohup ../dist/ows-node --test-dir $TEST_DIR &>> $log_file &
 
+    NODE_COUNT=$((NODE_COUNT + 1))
     NODE_PID=$!
 
     trap_add "stop_node $NODE_PID" EXIT
@@ -39,10 +41,10 @@ stop_node() {
     local pid=$1
 
     if ps -p $pid > /dev/null; then
-        kill -9 $pid > /dev/null 2>&1
+        kill $pid # don't call with -9, so the nodes have time to clean up, and to avoid an ugly kill message being printed to stderr
     fi
 }
 
 node_log_file() {
-    echo "${TEST_DIR}/nodes.log"
+    echo "${TEST_DIR}/node${NODE_COUNT}.log"
 }
