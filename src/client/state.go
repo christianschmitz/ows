@@ -143,12 +143,13 @@ func (s *clientState) appendActions(actions ...ledger.Action) error {
 
 	cs.Signatures = []ledger.Signature{sig}
 
+	// Pick node before appending change set locally, because the change set might add a node that isn't yet online
+	nc := s.newAPIClient().PickNode()
+
 	// Append locally
 	if err := s.AppendChangeSet(cs); err != nil {
 		return err
 	}
-
-	nc := s.newAPIClient().PickNode()
 
 	// Append remotely
 	return nc.AppendChangeSet(cs)
