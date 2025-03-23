@@ -24,12 +24,13 @@ add_node() {
 start_node() {
     local node_private_key=$1
     local initial_config=$2
+    local port_offset=${3:-0}
     
     local log_file=$(node_log_file)
 
     OWS_PRIVATE_KEY=$node_private_key \
     OWS_INITIAL_CONFIG=$initial_config \
-    nohup ../dist/ows-node --test-dir $TEST_DIR &>> $log_file &
+    nohup ../dist/ows-node --test-dir $TEST_DIR --test-port-offset $port_offset &>> $log_file &
 
     NODE_COUNT=$((NODE_COUNT + 1))
     NODE_PID=$!

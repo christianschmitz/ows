@@ -13,6 +13,7 @@ type Manager struct {
 	Gateways  map[ledger.GatewayID]*Gateway
 	Nodes     map[ledger.NodeID]*Node
 
+	portOffset int
 	dockerInitialized bool // TODO: this should be moved into an Images or Containers field
 }
 
@@ -41,13 +42,14 @@ type Node struct {
 	Config ledger.NodeConfig
 }
 
-func NewManager(current *ledger.KeyPair, assetsDir string) *Manager {
+func NewManager(current *ledger.KeyPair, assetsDir string, portOffset int) *Manager {
 	return &Manager{
 		Current:           current,
 		AssetsDir:         assetsDir,
 		Functions:         map[ledger.FunctionID]*Function{},
 		Gateways:          map[ledger.GatewayID]*Gateway{},
 		Nodes:             map[ledger.NodeID]*Node{},
+		portOffset: portOffset,
 		dockerInitialized: false,
 	}
 }

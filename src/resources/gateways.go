@@ -83,7 +83,7 @@ func (m *Manager) addGateway(id ledger.GatewayID, config ledger.GatewayConfig) e
 	}
 
 	s := &http.Server{
-		Addr:           fmt.Sprintf(":%d", config.Port),
+		Addr:           fmt.Sprintf(":%d", int(config.Port) + m.portOffset),
 		Handler:        h,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,

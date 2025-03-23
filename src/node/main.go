@@ -18,6 +18,7 @@ const keyPath = "/etc/ows/key"
 
 var (
 	state = &nodeState{}
+	testPortOffset = 0
 )
 
 func main() {
@@ -28,7 +29,7 @@ func main() {
 	}
 
 	cli.Flags().StringVar(&(state.testDir), "test-dir", "", "test directory")
-
+	cli.Flags().IntVar(&testPortOffset, "test-port-offset", 0, "port offsets (for testing locally)")
 	cli.Execute()
 
 	quitChannel := make(chan os.Signal, 1)
@@ -48,7 +49,7 @@ func handleStartNode(cmd *cobra.Command, args []string) error {
 
 	// Set resource object
 	log.Printf("starting OWS node for %s\n", l.ProjectID())
-	state.resources = resources.NewManager(kp, state.assetsPath())
+	state.resources = resources.NewManager(kp, state.assetsPath(), testPortOffset)
 	state.resources.Sync(l.Snapshot)
 
 	// Sync from other nodes (if other nodes are available)
