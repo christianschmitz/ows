@@ -39,7 +39,7 @@ func (s *nodeState) AddAsset(bs []byte, isFromNode bool) (ledger.AssetID, error)
 
 	for _, nodeID := range closestNodes {
 		if nodeID == s.ID() {
-			if _, err := s.resources.Assets.Add(bs); err != nil {
+			if _, err := s.resources.AddAsset(bs); err != nil {
 				log.Println("failed to add asset localy (%v)", err)
 			}
 		} else {
@@ -58,7 +58,7 @@ func (s *nodeState) AddAsset(bs []byte, isFromNode bool) (ledger.AssetID, error)
 }
 
 func (s *nodeState) GetAsset(id ledger.AssetID) ([]byte, error) {
-	return s.resources.Assets.Get(id)
+	return s.resources.GetAsset(id)
 }
 
 // Append the change set to the ledger, then write the ledger to disk, and
@@ -98,7 +98,7 @@ func (s *nodeState) Ledger() *ledger.Ledger {
 }
 
 func (s *nodeState) ListAssets() []ledger.AssetID {
-	return s.resources.Assets.ListAssets()
+	return s.resources.ListAssets()
 }
 
 func (s *nodeState) OwnKeyPair() *ledger.KeyPair {

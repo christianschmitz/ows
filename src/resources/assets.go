@@ -3,6 +3,7 @@ package resources
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -12,19 +13,7 @@ import (
 	"ows/network"
 )
 
-type AssetManager struct {
-	Nodes     *NodeManager
-	AssetsDir string
-}
-
-func newAssetManager(assetsDir string, nodes *NodeManager) *AssetManager {
-	return &AssetManager{
-		Nodes:     nodes,
-		AssetsDir: assetsDir,
-	}
-}
-
-func (m *AssetManager) Add(bs []byte) (ledger.AssetID, error) {
+func (m *Manager) AddAsset(bs []byte) (ledger.AssetID, error) {
 	return AddAsset(m.AssetsDir, bs)
 }
 
@@ -50,7 +39,7 @@ func AddAsset(assetsDir string, bs []byte) (ledger.AssetID, error) {
 
 // Get the asset locally.
 // Returns an os.ErrNotExist error if not found
-func (m *AssetManager) Get(id ledger.AssetID) ([]byte, error) {
+func (m *Manager) GetAsset(id ledger.AssetID) ([]byte, error) {
 	return GetAsset(m.AssetsDir, id)
 }
 
@@ -68,7 +57,7 @@ func GetAsset(assetsDir string, id ledger.AssetID) ([]byte, error) {
 	return bs, nil
 }
 
-func (m *AssetManager) AssetExists(id ledger.AssetID) bool {
+func (m *Manager) AssetExists(id ledger.AssetID) bool {
 	p := path.Join(m.AssetsDir, string(id))
 
 	_, err := os.Stat(p)
@@ -88,20 +77,19 @@ func (m *AssetManager) AssetExists(id ledger.AssetID) bool {
 
 // First looks for asset locally.
 // Then tries to download from peers.
-func (m *AssetManager) AssertExists(id ledger.AssetID) error {
-	log.Println(m.AssetsDir)
+func (m *Manager) AssertAssetExists(id ledger.AssetID) error {
 	if m.AssetExists(id) {
 		return nil
 	}
 
 	// download from the node that is nearest to the asset first
-	otherNodeIDs := m.Nodes.OtherNodeIDs()
+	otherNodeIDs := m.OtherNodeIDs()
 	network.SortNodesByDistanceToTarget(otherNodeIDs, string(id))
 
 	var lastError error
 
 	for _, otherNodeID := range otherNodeIDs {
-		c, err := m.Nodes.NewClient(otherNodeID)
+		c, err := m.NewNodeAPIClient(otherNodeID)
 		if err != nil {
 			lastError = err
 			continue
@@ -116,7 +104,7 @@ func (m *AssetManager) AssertExists(id ledger.AssetID) error {
 			continue
 		}
 
-		if _, err := m.Add(bs); err != nil {
+		if _, err := m.AddAsset(bs); err != nil {
 			return err
 		} else {
 			return nil
@@ -131,7 +119,7 @@ func (m *AssetManager) AssertExists(id ledger.AssetID) error {
 }
 
 // List all locally stored assets
-func (m *AssetManager) ListAssets() []ledger.AssetID {
+func (m *Manager) ListAssets() []ledger.AssetID {
 	return ListAssets(m.AssetsDir)
 }
 
@@ -154,4 +142,20 @@ func ListAssets(assetsDir string) []ledger.AssetID {
 	}
 
 	return assets
+}
+
+func (m *Manager) copyAsset(assetID string, dst string) error {
+	assetsDir := m.AssetsDir
+	src := assetsDir + "/" + assetID
+
+	input, err := ioutil.ReadFile(src)
+	if err != nil {
+		return err
+	}
+
+	if err := ioutil.WriteFile(dst, input, 0644); err != nil {
+		return err
+	}
+
+	return nil
 }

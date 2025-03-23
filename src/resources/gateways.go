@@ -13,28 +13,6 @@ import (
 	"ows/ledger"
 )
 
-type Endpoint struct {
-	Config ledger.GatewayEndpointConfig
-}
-
-type Gateway struct {
-	Port    ledger.Port
-	Handler *GatewayHandler
-	Server  *http.Server
-}
-
-type GatewayHandler struct {
-	Functions *FunctionManager
-	// first key is method: "GET", "POST", "DELETE", "PUT", "PATCH"
-	// second key is relative path, including initial slash (eg. "/assets")
-	Endpoints map[string]map[string]*Endpoint
-}
-
-type GatewaysManager struct {
-	Functions *FunctionManager
-	Gateways  map[ledger.GatewayID]*Gateway
-}
-
 func (g *Gateway) shutdown() error {
 	fmt.Printf("Shutting down gateway at port %d\n", g.Port)
 
@@ -49,7 +27,7 @@ func (h *GatewayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if endpoints, ok := h.Endpoints[r.Method]; ok {
 		if endpoint, ok := endpoints[r.URL.Path]; ok {
 			// now run the task
-			resp, err := h.Functions.Run(endpoint.Config.FunctionID, "hello world")
+			resp, err := h.Manager.RunFunction(endpoint.Config.FunctionID, "hello world")
 			if err != nil {
 				http.Error(w, fmt.Sprintf("failed to run task (%v)", err), 500)
 				return
@@ -70,21 +48,14 @@ func (h *GatewayHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func newGatewaysManager(functions *FunctionManager) *GatewaysManager {
-	return &GatewaysManager{
-		Functions: functions,
-		Gateways:  map[ledger.GatewayID]*Gateway{},
-	}
-}
-
-func (m *GatewaysManager) Sync(gateways map[ledger.GatewayID]ledger.GatewayConfig) error {
+func (m *Manager) SyncGateways(gateways map[ledger.GatewayID]ledger.GatewayConfig) error {
 	for id, conf := range gateways {
 		if _, ok := m.Gateways[id]; ok {
-			if err := m.update(id, conf); err != nil {
+			if err := m.updateGateway(id, conf); err != nil {
 				return fmt.Errorf("failed to update gateway %s (%v)", id, err)
 			}
 		} else {
-			if err := m.add(id, conf); err != nil {
+			if err := m.addGateway(id, conf); err != nil {
 				return fmt.Errorf("failed to add gateway %s (%v)", id, err)
 			}
 		}
@@ -92,7 +63,7 @@ func (m *GatewaysManager) Sync(gateways map[ledger.GatewayID]ledger.GatewayConfi
 
 	for id, _ := range m.Gateways {
 		if _, ok := gateways[id]; !ok {
-			if err := m.remove(id); err != nil {
+			if err := m.removeGateway(id); err != nil {
 				return fmt.Errorf("failed to remove gateway %s (%v)", id, err)
 			}
 		}
@@ -101,14 +72,14 @@ func (m *GatewaysManager) Sync(gateways map[ledger.GatewayID]ledger.GatewayConfi
 	return nil
 }
 
-func (m *GatewaysManager) add(id ledger.GatewayID, config ledger.GatewayConfig) error {
+func (m *Manager) addGateway(id ledger.GatewayID, config ledger.GatewayConfig) error {
 	if _, ok := m.Gateways[id]; ok {
 		return fmt.Errorf("gateway %s already exists", id)
 	}
 
 	h := &GatewayHandler{
-		Functions: m.Functions,
-		Endpoints: map[string]map[string]*Endpoint{},
+		Manager:   m,
+		Endpoints: map[string]map[string]*GatewayEndpoint{},
 	}
 
 	s := &http.Server{
@@ -131,7 +102,7 @@ func (m *GatewaysManager) add(id ledger.GatewayID, config ledger.GatewayConfig) 
 	log.Printf("added gateway %s on port %d\n", id, config.Port)
 
 	for _, ep := range config.Endpoints {
-		if err := m.addEndpoint(id, ep); err != nil {
+		if err := m.addGatewayEndpoint(id, ep); err != nil {
 			return err
 		}
 	}
@@ -139,7 +110,7 @@ func (m *GatewaysManager) add(id ledger.GatewayID, config ledger.GatewayConfig) 
 	return nil
 }
 
-func (m *GatewaysManager) remove(id ledger.GatewayID) error {
+func (m *Manager) removeGateway(id ledger.GatewayID) error {
 	gateway, ok := m.Gateways[id]
 	if !ok {
 		return fmt.Errorf("gateway %s not found", id)
@@ -157,7 +128,7 @@ func (m *GatewaysManager) remove(id ledger.GatewayID) error {
 	return nil
 }
 
-func (m *GatewaysManager) update(id ledger.GatewayID, config ledger.GatewayConfig) error {
+func (m *Manager) updateGateway(id ledger.GatewayID, config ledger.GatewayConfig) error {
 	prev, ok := m.Gateways[id]
 	if !ok {
 		return fmt.Errorf("gateway %s not found", id)
@@ -170,12 +141,12 @@ func (m *GatewaysManager) update(id ledger.GatewayID, config ledger.GatewayConfi
 	for _, ep := range config.Endpoints {
 		if methodEndpoints, ok := prev.Handler.Endpoints[ep.Method]; ok {
 			if _, ok := methodEndpoints[ep.Path]; ok {
-				return m.updateEndpoint(id, ep)
+				return m.updateGatewayEndpoint(id, ep)
 			} else {
-				return m.addEndpoint(id, ep)
+				return m.addGatewayEndpoint(id, ep)
 			}
 		} else {
-			return m.addEndpoint(id, ep)
+			return m.addGatewayEndpoint(id, ep)
 		}
 	}
 
@@ -186,7 +157,7 @@ func (m *GatewaysManager) update(id ledger.GatewayID, config ledger.GatewayConfi
 
 		if len(methodEndpointConfigs) == 0 {
 			for path, _ := range methodEndpoints {
-				return m.removeEndpoint(id, method, path)
+				return m.removeGatewayEndpoint(id, method, path)
 			}
 		}
 
@@ -196,7 +167,7 @@ func (m *GatewaysManager) update(id ledger.GatewayID, config ledger.GatewayConfi
 			})
 
 			if len(pathEndpointConfigs) == 0 {
-				return m.removeEndpoint(id, method, path)
+				return m.removeGatewayEndpoint(id, method, path)
 			}
 		}
 	}
@@ -204,7 +175,7 @@ func (m *GatewaysManager) update(id ledger.GatewayID, config ledger.GatewayConfi
 	return nil
 }
 
-func (m *GatewaysManager) addEndpoint(gatewayID ledger.GatewayID, config ledger.GatewayEndpointConfig) error {
+func (m *Manager) addGatewayEndpoint(gatewayID ledger.GatewayID, config ledger.GatewayEndpointConfig) error {
 	gateway, ok := m.Gateways[gatewayID]
 	if !ok {
 		return fmt.Errorf("invalid gateway id %s", gatewayID)
@@ -215,7 +186,7 @@ func (m *GatewaysManager) addEndpoint(gatewayID ledger.GatewayID, config ledger.
 
 	endpoints, ok := gateway.Handler.Endpoints[method]
 	if !ok {
-		endpoints = map[string]*Endpoint{}
+		endpoints = map[string]*GatewayEndpoint{}
 		gateway.Handler.Endpoints[method] = endpoints
 	}
 
@@ -223,7 +194,7 @@ func (m *GatewaysManager) addEndpoint(gatewayID ledger.GatewayID, config ledger.
 		return errors.New("endpoint already exists")
 	}
 
-	endpoints[relPath] = &Endpoint{
+	endpoints[relPath] = &GatewayEndpoint{
 		Config: config,
 	}
 
@@ -232,7 +203,7 @@ func (m *GatewaysManager) addEndpoint(gatewayID ledger.GatewayID, config ledger.
 	return nil
 }
 
-func (m *GatewaysManager) removeEndpoint(gatewayID ledger.GatewayID, method string, path string) error {
+func (m *Manager) removeGatewayEndpoint(gatewayID ledger.GatewayID, method string, path string) error {
 	gateway, ok := m.Gateways[gatewayID]
 	if !ok {
 		return fmt.Errorf("invalid gateway id %s", gatewayID)
@@ -252,7 +223,7 @@ func (m *GatewaysManager) removeEndpoint(gatewayID ledger.GatewayID, method stri
 	return nil
 }
 
-func (m *GatewaysManager) updateEndpoint(gatewayID ledger.GatewayID, config ledger.GatewayEndpointConfig) error {
+func (m *Manager) updateGatewayEndpoint(gatewayID ledger.GatewayID, config ledger.GatewayEndpointConfig) error {
 	gateway, ok := m.Gateways[gatewayID]
 	if !ok {
 		return fmt.Errorf("invalid gateway id %s", gatewayID)
@@ -267,7 +238,7 @@ func (m *GatewaysManager) updateEndpoint(gatewayID ledger.GatewayID, config ledg
 		return fmt.Errorf("no endpoint with method %s and path %s found", config.Method, config.Path)
 	}
 
-	endpoints[config.Path] = &Endpoint{
+	endpoints[config.Path] = &GatewayEndpoint{
 		Config: config,
 	}
 

@@ -27,32 +27,14 @@ const NODEJS_INPUT_NAME = "input.json"
 const NODEJS_OUTPUT_NAME = "output.json"
 const IPC_SOCKET_NAME = "socket.sock"
 
-type Function struct {
-	Config ledger.FunctionConfig
-}
-
-type FunctionManager struct {
-	dockerInitialized bool
-	Assets            *AssetManager
-	Functions         map[ledger.FunctionID]*Function
-}
-
-func newFunctionManager(assets *AssetManager) *FunctionManager {
-	return &FunctionManager{
-		dockerInitialized: false,
-		Assets:            assets,
-		Functions:         map[ledger.FunctionID]*Function{},
-	}
-}
-
-func (m *FunctionManager) Sync(functions map[ledger.FunctionID]ledger.FunctionConfig) error {
+func (m *Manager) SyncFunctions(functions map[ledger.FunctionID]ledger.FunctionConfig) error {
 	for id, conf := range functions {
 		if _, ok := m.Functions[id]; ok {
-			if err := m.update(id, conf); err != nil {
+			if err := m.updateFunction(id, conf); err != nil {
 				return fmt.Errorf("failed to update function %s (%v)", id, err)
 			}
 		} else {
-			if err := m.add(id, conf); err != nil {
+			if err := m.addFunction(id, conf); err != nil {
 				return fmt.Errorf("failed to add function %s (%v)", id, err)
 			}
 		}
@@ -60,7 +42,7 @@ func (m *FunctionManager) Sync(functions map[ledger.FunctionID]ledger.FunctionCo
 
 	for id, _ := range m.Functions {
 		if _, ok := functions[id]; !ok {
-			if err := m.remove(id); err != nil {
+			if err := m.removeFunction(id); err != nil {
 				return fmt.Errorf("failed to remove function %s (%v)", id, err)
 			}
 		}
@@ -69,7 +51,7 @@ func (m *FunctionManager) Sync(functions map[ledger.FunctionID]ledger.FunctionCo
 	return nil
 }
 
-func (m *FunctionManager) add(id ledger.FunctionID, config ledger.FunctionConfig) error {
+func (m *Manager) addFunction(id ledger.FunctionID, config ledger.FunctionConfig) error {
 	log.Printf("adding function %s with handler %s...\n", id, config.HandlerID)
 
 	if _, ok := m.Functions[id]; ok {
@@ -85,7 +67,7 @@ func (m *FunctionManager) add(id ledger.FunctionID, config ledger.FunctionConfig
 		m.dockerInitialized = true
 	}
 
-	if err := m.Assets.AssertExists(config.HandlerID); err != nil {
+	if err := m.AssertAssetExists(config.HandlerID); err != nil {
 		return err
 	}
 
@@ -96,7 +78,7 @@ func (m *FunctionManager) add(id ledger.FunctionID, config ledger.FunctionConfig
 	return nil
 }
 
-func (m *FunctionManager) remove(id ledger.FunctionID) error {
+func (m *Manager) removeFunction(id ledger.FunctionID) error {
 	if _, ok := m.Functions[id]; !ok {
 		return errors.New("function not found")
 	}
@@ -108,7 +90,7 @@ func (m *FunctionManager) remove(id ledger.FunctionID) error {
 	return nil
 }
 
-func (m *FunctionManager) update(id ledger.FunctionID, config ledger.FunctionConfig) error {
+func (m *Manager) updateFunction(id ledger.FunctionID, config ledger.FunctionConfig) error {
 	fn, ok := m.Functions[id]
 	if !ok {
 		return fmt.Errorf("function %s not found", id)
@@ -119,7 +101,7 @@ func (m *FunctionManager) update(id ledger.FunctionID, config ledger.FunctionCon
 	return nil
 }
 
-func (m *FunctionManager) Run(id ledger.FunctionID, arg any) (any, error) {
+func (m *Manager) RunFunction(id ledger.FunctionID, arg any) (any, error) {
 	fn, ok := m.Functions[id]
 	if !ok {
 		return nil, fmt.Errorf("task %s not found", id)
@@ -155,7 +137,7 @@ func runNodeScriptDirectly(scriptPath string) (string, error) {
 	return string(output), nil
 }
 
-func (m *FunctionManager) runNodeScriptInDocker(handler string, arg any) (any, error) {
+func (m *Manager) runNodeScriptInDocker(handler string, arg any) (any, error) {
 	start := time.Now()
 
 	tmpDir, err := makeTmpDir()
@@ -238,22 +220,6 @@ func (m *FunctionManager) runNodeScriptInDocker(handler string, arg any) (any, e
 	}
 }
 
-func (m *FunctionManager) copyAsset(assetId string, dst string) error {
-	assetsDir := m.Assets.AssetsDir
-	src := assetsDir + "/" + assetId
-
-	input, err := ioutil.ReadFile(src)
-	if err != nil {
-		return err
-	}
-
-	if err := ioutil.WriteFile(dst, input, 0644); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func writeJson(input any, dst string) error {
 	inputData, err := json.Marshal(input)
 	if err != nil {
@@ -283,11 +249,11 @@ func readJson(src string) (any, error) {
 }
 
 // TODO: take runtime into account
-func (m *FunctionManager) dockerContainerName() string {
-	return DOCKER_CONTAINER_NAME + string(m.Assets.Nodes.CurrentNodeID())
+func (m *Manager) dockerContainerName() string {
+	return DOCKER_CONTAINER_NAME + string(m.CurrentNodeID())
 }
 
-func (m *FunctionManager) initializeDocker() error {
+func (m *Manager) initializeDocker() error {
 	// check if container is already running first
 	cmd := exec.Command("docker", "ps", "-q", "-f", "name="+m.dockerContainerName())
 	var out bytes.Buffer
