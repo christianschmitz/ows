@@ -13,7 +13,7 @@ type Manager struct {
 	Gateways  map[ledger.GatewayID]*Gateway
 	Nodes     map[ledger.NodeID]*Node
 
-	portOffset int
+	portOffset        int
 	dockerInitialized bool // TODO: this should be moved into an Images or Containers field
 }
 
@@ -49,7 +49,7 @@ func NewManager(current *ledger.KeyPair, assetsDir string, portOffset int) *Mana
 		Functions:         map[ledger.FunctionID]*Function{},
 		Gateways:          map[ledger.GatewayID]*Gateway{},
 		Nodes:             map[ledger.NodeID]*Node{},
-		portOffset: portOffset,
+		portOffset:        portOffset,
 		dockerInitialized: false,
 	}
 }

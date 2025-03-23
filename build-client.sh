@@ -1,3 +1,6 @@
 #!/bin/bash
+
+VERSION=$(git describe --tags --abbrev=0)
+
 cd ./src
-go build -o ../dist/ows ./client/*.go
+go build -ldflags "-X main.Version=$VERSION" -o ../dist/ows ./client/*.go

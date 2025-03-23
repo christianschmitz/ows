@@ -20,6 +20,7 @@ const (
 )
 
 var (
+	Version    = "dev" // set externally
 	state      = &clientState{}
 	gossipPort uint16 // can't be of type ledger.Port, because cobra flags doesn't accept that
 	isOffline  bool
@@ -46,6 +47,7 @@ func makeCLI() *cobra.Command {
 	cli.AddCommand(makeLedgerCLI())
 	cli.AddCommand(makeNodesCLI())
 	cli.AddCommand(makeProjectsCLI())
+	cli.AddCommand(makeVersionCommand())
 
 	cli.PersistentFlags().StringVar(&(state.testDir), "test-dir", "", "test directory")
 
@@ -285,6 +287,14 @@ func withProjectFlags(cmd *cobra.Command) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&(state.projectName), "project-name", DefaultProjectName, "project name")
 
 	return cmd
+}
+
+func makeVersionCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "show version",
+		RunE:  handleShowVersion,
+	}
 }
 
 func handleAddFunction(cmd *cobra.Command, args []string) error {
@@ -699,6 +709,16 @@ func handleListNodes(cmd *cobra.Command, args []string) error {
 	for id, conf := range s.Nodes {
 		fmt.Printf("%s %s %d %d\n", id, conf.Address, conf.GossipPort, conf.APIPort)
 	}
+
+	return nil
+}
+
+func handleShowVersion(cmd *cobra.Command, args []string) error {
+	if err := cobra.ExactArgs(0)(cmd, args); err != nil {
+		return err
+	}
+
+	fmt.Println(Version)
 
 	return nil
 }

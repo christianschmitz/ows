@@ -17,7 +17,8 @@ import (
 const keyPath = "/etc/ows/key"
 
 var (
-	state = &nodeState{}
+	Version        = "dev" // set externally
+	state          = &nodeState{}
 	testPortOffset = 0
 )
 
@@ -30,11 +31,28 @@ func main() {
 
 	cli.Flags().StringVar(&(state.testDir), "test-dir", "", "test directory")
 	cli.Flags().IntVar(&testPortOffset, "test-port-offset", 0, "port offsets (for testing locally)")
+
+	cli.AddCommand(&cobra.Command{
+		Use:   "version",
+		Short: "show version",
+		RunE:  handleShowVersion,
+	})
+
 	cli.Execute()
 
 	quitChannel := make(chan os.Signal, 1)
 	signal.Notify(quitChannel, syscall.SIGINT, syscall.SIGTERM)
 	<-quitChannel
+}
+
+func handleShowVersion(cmd *cobra.Command, args []string) error {
+	if err := cobra.ExactArgs(0)(cmd, args); err != nil {
+		return nil
+	}
+
+	fmt.Println(Version)
+
+	return nil
 }
 
 func handleStartNode(cmd *cobra.Command, args []string) error {
