@@ -39,10 +39,6 @@ func main() {
 	})
 
 	cli.Execute()
-
-	quitChannel := make(chan os.Signal, 1)
-	signal.Notify(quitChannel, syscall.SIGINT, syscall.SIGTERM)
-	<-quitChannel
 }
 
 func handleShowVersion(cmd *cobra.Command, args []string) error {
@@ -96,6 +92,10 @@ func handleStartNode(cmd *cobra.Command, args []string) error {
 
 	go network.ServeGossip(conf.GossipPort, kp, state)
 	log.Printf("hosting gossip service at https://%s:%d\n", conf.Address, conf.GossipPort)
+
+	quitChannel := make(chan os.Signal, 1)
+	signal.Notify(quitChannel, syscall.SIGINT, syscall.SIGTERM)
+	<-quitChannel
 
 	return nil
 }
